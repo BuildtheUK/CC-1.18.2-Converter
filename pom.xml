@@ -6,7 +6,7 @@
 
     <groupId>me.bteuk</groupId>
     <artifactId>CC-1.18.2-Converter</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
     <packaging>jar</packaging>
 
     <name>Converter</name>

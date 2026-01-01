@@ -10,6 +10,9 @@ world: earth
 automated_conversion:
   enabled: false
   speed: "NORMAL"
+  speed-seconds: 0 # This value is used when > 0 is set for it. Cannot be less than queue-worker-seconds.
+
+queue-worker-seconds: 4 # How often the queue worker should run to process regions in the queue? It will only get one region from the queue at a time.
 
 #World analyser functions.
 world_analyser: true
