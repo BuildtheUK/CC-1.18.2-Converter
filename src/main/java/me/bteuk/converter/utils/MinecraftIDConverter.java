@@ -1,6 +1,6 @@
-package me.bteuk.converter.utils;
+package org.btuk.converter.utils;
 
-import me.bteuk.converter.Main;
+import org.btuk.converter.Main;
 import net.querz.nbt.io.NBTUtil;
 import net.querz.nbt.tag.*;
 import org.json.simple.JSONArray;

@@ -1,4 +1,4 @@
-package me.bteuk.converter.cc;
+package org.btuk.converter.cc;
 
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;

@@ -1,4 +1,4 @@
-package me.bteuk.converter;
+package org.btuk.converter;
 
 import cubicchunks.regionlib.impl.EntryLocation2D;
 import net.querz.nbt.io.NBTInputStream;

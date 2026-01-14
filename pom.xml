@@ -4,9 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>me.bteuk</groupId>
+    <groupId>org.btuk</groupId>
     <artifactId>CC-1.18.2-Converter</artifactId>
     <version>1.2.0</version>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -30,7 +37,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>me.bteuk.converter.Main</mainClass>
+                            <mainClass>org.btuk.converter.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
@@ -53,7 +60,6 @@
     </repositories>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-assembly-plugin -->
         <dependency>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-assembly-plugin</artifactId>
@@ -74,7 +80,6 @@
             <artifactId>guava</artifactId>
             <version>31.1-jre</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple -->
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>

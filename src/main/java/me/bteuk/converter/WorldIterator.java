@@ -1,4 +1,4 @@
-package me.bteuk.converter;
+package org.btuk.converter;
 
 import cubicchunks.regionlib.impl.EntryLocation2D;
 import cubicchunks.regionlib.impl.EntryLocation3D;
@@ -7,16 +7,14 @@ import cubicchunks.regionlib.impl.save.SaveSection2D;
 import cubicchunks.regionlib.impl.save.SaveSection3D;
 import cubicchunks.regionlib.lib.ExtRegion;
 import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
-import me.bteuk.converter.cc.MemoryReadRegion;
-import me.bteuk.converter.cc.RWLockingCachedRegionProvider;
-import me.bteuk.converter.cc.Utils;
-import me.bteuk.converter.utils.MinecraftIDConverter;
+import org.btuk.converter.cc.MemoryReadRegion;
+import org.btuk.converter.cc.RWLockingCachedRegionProvider;
+import org.btuk.converter.cc.Utils;
+import org.btuk.converter.utils.MinecraftIDConverter;
 
-import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
 
 public class WorldIterator {
 

@@ -1,4 +1,4 @@
-package me.bteuk.converter;
+package org.btuk.converter;
 
 import java.util.Date;
 

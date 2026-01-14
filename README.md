@@ -1,6 +1,6 @@
 # CC-1.18.2 Converter
 
-The CC-1.18.2-Converter is a Java-based tool designed to convert Minecraft worlds from version 1.12.2 to version 1.18.2, specifically for use with creative building in BTE worlds. It allows users to convert the world with specific height settings and utilize a paper 1.18.2 server with the Converter plugin for further conversion of special blocks. The program uses a command-line interface and allows for customization of the number of threads used in the conversion process. The resulting output includes converted regions, post-processing, and entity locations if needed.
+The CC-1.18.2-Converter is a Java-based tool designed to convert Minecraft worlds from version 1.12.2 to version 1.18.2, specifically for use with creative building in BTE worlds. It allows users to convert the world with specific height settings and use a paper 1.18.2 server with the Converter plugin for further conversion of special blocks. The program uses a command-line interface and allows you to choose the number of threads used in the conversion process. The resulting output includes converted regions, post-processing and entity locations if needed.
 
 ### Entities
 Entities will be converted but only the supported ones:

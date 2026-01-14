@@ -1,4 +1,4 @@
-package me.bteuk.converter.utils;
+package org.btuk.converter.utils;
 
 public class LegacyID {
 

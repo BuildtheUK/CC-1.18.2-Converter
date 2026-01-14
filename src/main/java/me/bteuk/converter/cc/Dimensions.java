@@ -1,4 +1,4 @@
-package me.bteuk.converter.cc;
+package org.btuk.converter.cc;
 
 import java.util.Collection;
 import java.util.Collections;

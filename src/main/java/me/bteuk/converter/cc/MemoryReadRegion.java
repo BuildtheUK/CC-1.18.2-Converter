@@ -1,4 +1,4 @@
-package me.bteuk.converter.cc;
+package org.btuk.converter.cc;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;

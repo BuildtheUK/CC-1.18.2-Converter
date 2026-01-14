@@ -1,4 +1,4 @@
-package me.bteuk.converter.cc;
+package org.btuk.converter.cc;
 
 import cubicchunks.regionlib.impl.EntryLocation3D;
 import cubicchunks.regionlib.util.CheckedConsumer;
