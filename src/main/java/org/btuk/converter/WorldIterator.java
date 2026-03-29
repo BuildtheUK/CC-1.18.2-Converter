@@ -11,17 +11,22 @@ import org.btuk.converter.cc.MemoryReadRegion;
 import org.btuk.converter.cc.RWLockingCachedRegionProvider;
 import org.btuk.converter.cc.Utils;
 import org.btuk.converter.utils.MinecraftIDConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class WorldIterator {
+
+    private static final Logger log = LoggerFactory.getLogger(WorldIterator.class);
 
     SaveCubeColumns saveCubeColumns;
 
@@ -59,9 +64,8 @@ public class WorldIterator {
             Files.createDirectories(output.resolve("post-processing"));
             Files.createDirectories(output.resolve("region"));
             Files.createDirectories(output.resolve("maps"));
-            //Files.createDirectories(output.resolve("entities"));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error creating output directories", e);
         }
 
         saveCubeColumns = createSave(input);
@@ -78,6 +82,9 @@ public class WorldIterator {
             return;
         }
 
+        // Sort files to ensure consistent order across runs
+        Arrays.sort(files);
+
         //Create the thread manager.
         //The max number of threads is specified in the args, or a default value of 1.
         ThreadManager manager = new ThreadManager(this, maxThreads);
@@ -89,14 +96,19 @@ public class WorldIterator {
             try {
                 manager.queue.put(sFile);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error("Interrupted while queuing file: " + sFile, e);
+                Thread.currentThread().interrupt();
             }
         }
 
-        System.out.println("Number of regions queued = " + manager.queue.size());
+        log.info("Number of regions queued = " + manager.queue.size());
 
         int max_queue = manager.queue.size();
-        //Every 10 seconds print the queue size in the console.
+        
+        // Track start time for ETA calculation
+        long startTime = System.currentTimeMillis();
+        
+        //Every 10 seconds print the progress with ETA
         Timer t = new Timer();
         t.schedule(new TimerTask() {
             @Override
@@ -108,25 +120,34 @@ public class WorldIterator {
                 }
                 int progress = max_queue - (manager.queue.size() - maxThreads);
                 int percentComplete = (int) (((double) progress / (double) max_queue) * 100);
-                String progressBar = "[";
+                
+                // Calculate speed and ETA
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                double speedPerSec = (progress / (double)(elapsedTime / 1000.0));
+                long remainingItems = max_queue - progress;
+                long estimatedRemainingSeconds = (long) (remainingItems / speedPerSec);
+                
+                // Format ETA
+                int hours = (int) (estimatedRemainingSeconds / 3600);
+                int minutes = (int) ((estimatedRemainingSeconds % 3600) / 60);
+                int seconds = (int) (estimatedRemainingSeconds % 60);
+                String etaStr = String.format("%02d:%02d:%02d", hours, minutes, seconds);
 
-                for (int i = 0; i < 100; i += 5) {
-                    if (i < percentComplete) {
-                        progressBar += "=";
-                    } else {
-                        progressBar += " ";
-                    }
-                }
-
-                progressBar += "] " + percentComplete + "%";
-                System.out.print("\r" + progressBar + ("   Queue: " + (manager.queue.size()-maxThreads) + "/" + max_queue + " "));
+                // Print new line for each percent change
+                log.info("Progress: " + percentComplete + "% | Queue: " + (manager.queue.size()-maxThreads) + "/" + max_queue + " | Speed: " + String.format("%.2f", speedPerSec) + " regions/s | ETA: " + etaStr);
             }
         }, 10000, 10000);
 
         //Start processing the queue.
         manager.process();
         while (manager.activeThreads.get() > 0) {
-
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                log.warn("Main thread interrupted while waiting for worker threads", e);
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
 
         if(!MinecraftIDConverter.instance.convertedMapItems.isEmpty())

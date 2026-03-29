@@ -14,6 +14,8 @@ import cubicchunks.regionlib.lib.header.IKeyIdToSectorMap;
 import cubicchunks.regionlib.lib.header.IntPackedSectorMap;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CorruptedDataException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -24,6 +26,8 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
+
+    private static final Logger log = LoggerFactory.getLogger(MemoryReadRegion.class);
 
     private final IKeyIdToSectorMap<?, ?, K> sectorMap;
     private final int sectorSize;
@@ -106,11 +110,10 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
             } catch (IOException e) {
                 //Only print the full IOException error if the region key didn't already throw an error
                 if(!thrownRegionKeys.contains(key.getRegionKey())) {
-                    Exception exception = new UncheckedIOException(e);
-                    exception.printStackTrace();
+                    log.error("I/O error while reading region key " + key.getRegionKey().getName(), e);
                     thrownRegionKeys.add(key.getRegionKey());
                 }else {
-                    System.out.println(key.getRegionKey().getName() + ": Skipping " + key);
+                    log.warn(key.getRegionKey().getName() + ": Skipping " + key);
                 }
                 return Optional.empty();
             }

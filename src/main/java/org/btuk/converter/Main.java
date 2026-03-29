@@ -1,8 +1,13 @@
 package org.btuk.converter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Date;
 
 public class Main {
+
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     //Y / 16 is the cube height
     public static int MIN_Y_CUBE = -8;
@@ -32,9 +37,9 @@ public class Main {
         Long start_time = date.getTime();
 
         if (args.length < 5) {
-            System.out.println("You must provide arguments for the input and output folders as well as the min and max height and offset.");
-            System.out.println("Additionally the number of threads can be specified.");
-            System.out.println("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
+            log.error("You must provide arguments for the input and output folders as well as the min and max height and offset.");
+            log.error("Additionally the number of threads can be specified.");
+            log.error("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
             return;
         }
 
@@ -47,14 +52,14 @@ public class Main {
             MAX_Y_CUBE = Integer.parseInt(args[3]) / 16;
 
         } catch (NumberFormatException e) {
-            System.out.println("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
+            log.error("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
             return;
         }
         try {
 
             OFFSET = Integer.parseInt(args[4]);
         } catch (NumberFormatException e) {
-            System.out.println("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
+            log.error("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
             return;
         }
 
@@ -62,16 +67,16 @@ public class Main {
             try {
                 max_threads = Integer.parseInt(args[5]);
                 if (max_threads > available_processors) {
-                    System.out.println("Error: The number of threads specified (" + max_threads + ") exceeds the number of available processors (" + available_processors + ").");
+                    log.error("Error: The number of threads specified (" + max_threads + ") exceeds the number of available processors (" + available_processors + ").");
                     return;
                 }
             } catch (NumberFormatException e) {
                 max_threads = 1;
             }
         }
-        System.out.println("Starting converter with Min-Cube: " + MIN_Y_CUBE + " and Max-Cube: " + MAX_Y_CUBE);
-        System.out.println("Offset is set to " + OFFSET + " blocks / meters");
-        System.out.println("Number of threads: " + max_threads);
+        log.info("Starting converter with Min-Cube: " + MIN_Y_CUBE + " and Max-Cube: " + MAX_Y_CUBE);
+        log.info("Offset is set to " + OFFSET + " blocks / meters");
+        log.info("Number of threads: " + max_threads);
 
         new WorldIterator(args[0], args[1], max_threads);
 
@@ -86,9 +91,8 @@ public class Main {
         long hour = (durationInMillis / (1000 * 60 * 60)) % 24;
 
         String time = String.format("%02d:%02d:%02d.%d", hour, minute, second, millis);
-        System.out.println(" ");
-        System.out.println("Done!");
-        System.out.println("Conversion completed in: " + time);
+        log.info("Done!");
+        log.info("Conversion completed in: " + time);
 
     }
 }

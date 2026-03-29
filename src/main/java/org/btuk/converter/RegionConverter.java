@@ -19,6 +19,8 @@ import org.btuk.converter.cc.RWLockingCachedRegionProvider;
 import org.btuk.converter.cc.Utils;
 import org.btuk.converter.utils.LegacyID;
 import org.btuk.converter.utils.MinecraftIDConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import net.querz.nbt.tag.CompoundTag;
 import net.querz.nbt.tag.DoubleTag;
 import net.querz.nbt.tag.ListTag;
@@ -39,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 import static cubicchunks.regionlib.impl.save.MinecraftSaveSection.MinecraftRegionType.MCA;
 
 public class RegionConverter extends Thread {
+
+    private static final Logger log = LoggerFactory.getLogger(RegionConverter.class);
 
     ThreadManager mng;
 
@@ -132,18 +136,15 @@ public class RegionConverter extends Thread {
                 try {
                     convert();
                 } catch (IOException ex) {
-                    ex.printStackTrace();
-                    System.out.println("An IOException occurred converting the file: " + file);
+                    log.error("An IOException occurred converting the file: " + file, ex);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    System.out.println("An Exception occurred converting the file: " + file);
+                    log.error("An Exception occurred converting the file: " + file, e);
                 }
             }
         } catch (InterruptedException e) {
+            log.error("Thread interrupted while processing", e);
             Thread.currentThread().interrupt();
-        }/* catch (IOException e) {
-            e.printStackTrace();
-        }*/
+        }
     }
 
     /**
@@ -181,7 +182,7 @@ public class RegionConverter extends Thread {
 
         } catch (
                 IOException e) {
-            e.printStackTrace();
+            log.error("Error writing post-processing file for region: {}", file, e);
         }
     }
 
