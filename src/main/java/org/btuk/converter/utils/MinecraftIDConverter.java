@@ -6657,7 +6657,7 @@ public class MinecraftIDConverter {
                         TagConv.getStringTagProperty(attributeModifiersTag, "Slot", "slot", attributeModifierItem);
                         TagConv.getLongTagProperty(attributeModifiersTag, "UUIDMost", "uuid_most", attributeModifierItem);
                         TagConv.getLongTagProperty(attributeModifiersTag, "UUIDLeast", "uuid_least", attributeModifierItem);
-                        int operationID = attributeModifiersTag.getInt("Operation");
+                        int operationID = TagConv.getIntOrDefault(attributeModifiersTag, "Operation", 0);
                         String operation = "ADD_NUMBER";
                         if(operationID == 1)
                             operation = "ADD_SCALAR";
@@ -6680,7 +6680,7 @@ public class MinecraftIDConverter {
                     JSONArray customPotionEffectsArray = new JSONArray();
                     for(CompoundTag customPotionEffect : customPotionEffects){
                         JSONObject customPotionEffectItem = new JSONObject();
-                        customPotionEffectItem.put("id", getEffectID(customPotionEffect.getInt("Id")));
+                        customPotionEffectItem.put("id", getEffectID(TagConv.getIntOrDefault(customPotionEffect, "Id", 0)));
                         TagConv.getByteTagProperty(customPotionEffect, "Amplifier", "amplifier", customPotionEffectItem);
                         TagConv.getIntTagProperty(customPotionEffect, "Duration", "duration", customPotionEffectItem);
                         TagConv.getByteTagProperty(customPotionEffect, "Ambient", "ambient", customPotionEffectItem);
