@@ -568,14 +568,17 @@ public class MinecraftIDConverter {
 
                             jo.put("id", owner.getString("Id"));
 
-                            CompoundTag properties = owner.getCompoundTag("Properties");
-                            ListTag<CompoundTag> textures = (ListTag<CompoundTag>) properties.getListTag("textures");
+                            if(owner.containsKey("Properties")) {
+                                CompoundTag properties = owner.getCompoundTag("Properties");
+                                ListTag<CompoundTag> textures = (ListTag<CompoundTag>) properties.getListTag("textures");
 
-                            //Get first texture.
-                            CompoundTag texture = textures.get(0);
+                                //Get first texture.
+                                CompoundTag texture = textures.get(0);
 
-                            jo.put("texture", texture.getString("Value"));
-
+                                jo.put("texture", texture.getString("Value"));
+                            }else if(owner.containsKey("Name")) {
+                                jo.put("profileName", owner.getString("Name"));
+                            }
                         }
 
                     }
@@ -6737,7 +6740,10 @@ public class MinecraftIDConverter {
             JSONObject displayProps = new JSONObject();
             CompoundTag displayTag = tag.getCompoundTag("display");
             TagConv.getStringTagProperty(displayTag, "Name", "display_name", displayProps);
+            TagConv.getStringTagProperty(displayTag, "LocName", "display_loc_name", displayProps);
             TagConv.getIntTagProperty(displayTag, "color", "display_color", displayProps);
+            TagConv.getIntTagProperty(displayTag, "MapColor", "map_color", displayProps);
+            TagConv.getStringTagListProperty(displayTag, "Lore", "lore", displayProps);
 
             if(!displayProps.isEmpty())
                 props.put("DisplayProps", displayProps);
@@ -6751,19 +6757,26 @@ public class MinecraftIDConverter {
      */
     public static void getSkullOwner(CompoundTag tag, JSONObject props){
         if(tag.containsKey("SkullOwner")) {
-            CompoundTag skullOwnerTag = tag.getCompoundTag("SkullOwner");
+            Tag<?> rawSkullOwnerTag = tag.get("SkullOwner");
             JSONObject skullOwnerItem = new JSONObject();
-            skullOwnerItem.put("id", skullOwnerTag.getString("Id"));
+            if(rawSkullOwnerTag instanceof CompoundTag skullOwnerTag) {
+                if(skullOwnerTag.containsKey("Id"))
+                    skullOwnerItem.put("id", skullOwnerTag.getString("Id"));
 
-            if (skullOwnerTag.containsKey("Properties")) {
-                CompoundTag skullOwnerProperties = skullOwnerTag.getCompoundTag("Properties");
-                if (skullOwnerProperties.containsKey("textures")) {
-                    ListTag skullOwnerTextures = skullOwnerProperties.getListTag("textures");
-                    if (skullOwnerTextures.size() > 0) {
-                        Tag skullOwnerTextureTag = skullOwnerTextures.get(0);
-                        TagConv.getStringTagProperty((CompoundTag) skullOwnerTextureTag, "Value", "texture", skullOwnerItem);
+                if (skullOwnerTag.containsKey("Properties")) {
+                    CompoundTag skullOwnerProperties = skullOwnerTag.getCompoundTag("Properties");
+                    if (skullOwnerProperties.containsKey("textures")) {
+                        ListTag skullOwnerTextures = skullOwnerProperties.getListTag("textures");
+                        if (skullOwnerTextures.size() > 0) {
+                            Tag skullOwnerTextureTag = skullOwnerTextures.get(0);
+                            TagConv.getStringTagProperty((CompoundTag) skullOwnerTextureTag, "Value", "texture", skullOwnerItem);
+                        }
                     }
-                }
+                } else if(skullOwnerTag.containsKey("Name"))
+                    skullOwnerItem.put("profileName", skullOwnerTag.getString("Name"));
+
+            }else if(rawSkullOwnerTag instanceof StringTag skullOwnerProfileName) {
+                skullOwnerItem.put("profileName", skullOwnerProfileName.getValue());
             }
 
             props.put("SkullOwner", skullOwnerItem);
@@ -6966,15 +6979,16 @@ public class MinecraftIDConverter {
                 sessionItem.put("maps_session", mapSession);
 
                 Path mapSessionFolder = mapsPath.resolve("maps_" + mapSession);
-                FileWriter mapFile = new FileWriter(mapSessionFolder.resolve("maps.json").toFile());
-                mapFile.write(sessionItem.toJSONString());
-                mapFile.flush();
-                mapFile.close();
+                if(Files.exists(mapSessionFolder)) {
+                    FileWriter mapFile = new FileWriter(mapSessionFolder.resolve("maps.json").toFile());
+                    mapFile.write(sessionItem.toJSONString());
+                    mapFile.flush();
+                    mapFile.close();
+                } else
+                    log.error("Error while writing maps session config, source world data folder was not found");
             }
-
-
         }catch (Exception ex){
-            log.error(String.format("Error while writing maps session config"));
+            log.error("Error while writing maps session config", ex);
         }
     }
 

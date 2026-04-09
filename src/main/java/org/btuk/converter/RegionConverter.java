@@ -738,7 +738,5 @@ public class RegionConverter extends Thread {
 
             jaEntities.add(object);
         }
-
-
     }
 }
