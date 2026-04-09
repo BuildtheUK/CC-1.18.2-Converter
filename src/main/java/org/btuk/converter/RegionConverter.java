@@ -14,6 +14,7 @@ import cubicchunks.regionlib.impl.MinecraftChunkLocation;
 import cubicchunks.regionlib.impl.header.TimestampHeaderEntryProvider;
 import cubicchunks.regionlib.impl.save.MinecraftSaveSection;
 import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
+import net.querz.io.MaxDepthReachedException;
 import org.btuk.converter.cc.MemoryWriteRegion;
 import org.btuk.converter.cc.RWLockingCachedRegionProvider;
 import org.btuk.converter.cc.Utils;
@@ -36,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static cubicchunks.regionlib.impl.save.MinecraftSaveSection.MinecraftRegionType.MCA;
@@ -400,13 +402,13 @@ public class RegionConverter extends Thread {
 
         //Get the cube of data.
         e3d = new EntryLocation3D(e2d.getEntryX(), y, e2d.getEntryZ());
-        Optional<ByteBuffer> cube = mng.itr.saveCubeColumns.load(e3d, true);
+        Optional<ByteBuffer> cube = mng.itr.saveCubeColumns.load(e3d, false);
 
         //Check if it exists.
         if (cube.isPresent()) {
 
             //Retrieve the data from the cube.
-            CompoundTag cubeTag = (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.get().array())).getTag();
+            CompoundTag cubeTag = getCubeTag(cube.get());
             CompoundTag cubeLevel = cubeTag.getCompoundTag("Level");
 
             if (cubeLevel == null) {
@@ -696,6 +698,21 @@ public class RegionConverter extends Thread {
         return 0;
     }
 
+    private CompoundTag getCubeTag(ByteBuffer cube) throws IOException {
+        try {
+            return (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.array())).getTag();
+        }catch (Exception ex) {
+            log.error("Cube ({},{},{}) in file {} has an greater depth then the default NBT max depth of 512 - possible corrupt cube. \nIncreasing it to 1024 to try and read the whole cube", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ(), e3d.getRegionKey().getName());
+            try {
+                return (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.array()), 1024).getTag();
+            }catch (MaxDepthReachedException e) {
+                log.error("Skipping cube ({},{},{})", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ());
+            }
+        }
+
+        return null;
+    }
+
     private void save(Path regionDir, ByteBuffer data) throws IOException {
         Utils.createDirectories(regionDir);
         MinecraftSaveSection save = new MinecraftSaveSection(new RWLockingCachedRegionProvider<>(
@@ -738,5 +755,7 @@ public class RegionConverter extends Thread {
 
             jaEntities.add(object);
         }
+
+
     }
 }

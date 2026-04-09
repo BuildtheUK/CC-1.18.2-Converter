@@ -108,8 +108,12 @@ public class ThreadManager {
     }
 
     public NamedTag readCompressedCC(InputStream is) throws IOException {
+        return readCompressedCC(is, Tag.DEFAULT_MAX_DEPTH);
+    }
+
+    public NamedTag readCompressedCC(InputStream is, int maxDepth) throws IOException {
         try (NBTInputStream nbtInputStream = new NBTInputStream(new BufferedInputStream(new GZIPInputStream(is)))) {
-            return nbtInputStream.readTag(Tag.DEFAULT_MAX_DEPTH);
+            return nbtInputStream.readTag(maxDepth);
         }
     }
 
