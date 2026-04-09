@@ -108,12 +108,10 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
 
                 return Optional.of(ByteBuffer.allocate(dataLength).put(fileBuffer));
             } catch (IOException e) {
-                //Only print the full IOException error if the region key didn't already throw an error
+                //Only print the IOException message if the region key didn't already throw an error
                 if(!thrownRegionKeys.contains(key.getRegionKey())) {
-                    log.error("I/O error while reading region key " + key.getRegionKey().getName(), e);
+                    log.error("{}: {}", e.getClass().getName(), e.getMessage());
                     thrownRegionKeys.add(key.getRegionKey());
-                }else {
-                    log.warn(key.getRegionKey().getName() + ": Skipping " + key);
                 }
                 return Optional.empty();
             }
