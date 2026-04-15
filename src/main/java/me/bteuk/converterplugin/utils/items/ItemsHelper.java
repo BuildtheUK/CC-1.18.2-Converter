@@ -5,11 +5,15 @@ import me.bteuk.converterplugin.utils.Utils;
 import me.bteuk.converterplugin.utils.inventory.InventoryHelper;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.banner.Pattern;
@@ -44,10 +48,7 @@ public class ItemsHelper {
      */
     public static ItemStack getItem(String id, JSONObject props) throws Exception{
         ItemStack itemStack = new ItemStack(Material.getMaterial(id.toUpperCase()));
-
-
         ItemMeta itemMeta = itemStack.getItemMeta();
-
         boolean skipDisplayProps = false;
 
         //Player Head
@@ -81,23 +82,22 @@ public class ItemsHelper {
             String _potion = ((String) potionEffects.get("Potion")).substring(10).toUpperCase();
             PotionMeta potionMeta = (PotionMeta) itemMeta;
 
-            String _potionEnum = _potion;
-            switch (_potion){
-                case "LEAPING" -> _potionEnum = "JUMP";
-                case "STRONG_LEAPING" -> _potionEnum = "STRONG_JUMP";
-                case "LONG_LEAPING" -> _potionEnum = "LONG_JUMP";
-                case "SWIFTNESS" -> _potionEnum = "SPEED";
-                case "STRONG_SWIFTNESS" -> _potionEnum = "STRONG_SPEED";
-                case "LONG_SWIFTNESS" -> _potionEnum = "LONG_SPEED";
-                case "HEALING" -> _potionEnum = "INSTANT_HEAL";
-                case "STRONG_HEALING" -> _potionEnum = "STRONG_INSTANT_HEAL";
-                case "HARMING" -> _potionEnum = "INSTANT_DAMAGE";
-                case "STRONG_HARMING" -> _potionEnum = "STRONG_INSTANT_DAMAGE";
-                case "REGENERATION" -> _potionEnum = "REGEN";
-                case "STRONG_REGENERATION" -> _potionEnum = "STRONG_REGEN";
-                case "LONG_REGENERATION" -> _potionEnum = "LONG_REGEN";
-
-            }
+            String _potionEnum = switch (_potion){
+                case "LEAPING" -> "JUMP";
+                case "STRONG_LEAPING" -> "STRONG_JUMP";
+                case "LONG_LEAPING" -> "LONG_JUMP";
+                case "SWIFTNESS" -> "SPEED";
+                case "STRONG_SWIFTNESS" -> "STRONG_SPEED";
+                case "LONG_SWIFTNESS" -> "LONG_SPEED";
+                case "HEALING" -> "INSTANT_HEAL";
+                case "STRONG_HEALING" -> "STRONG_INSTANT_HEAL";
+                case "HARMING" -> "INSTANT_DAMAGE";
+                case "STRONG_HARMING" -> "STRONG_INSTANT_DAMAGE";
+                case "REGENERATION" -> "REGEN";
+                case "STRONG_REGENERATION" -> "STRONG_REGEN";
+                case "LONG_REGENERATION" -> "LONG_REGEN";
+                default -> _potion;
+            };
 
             if(_potionEnum.startsWith("LONG_"))
                 potionMeta.setBasePotionData(new PotionData(PotionType.valueOf(_potionEnum.substring(5)), true, false));
@@ -106,10 +106,8 @@ public class ItemsHelper {
             else
                 potionMeta.setBasePotionData(new PotionData(PotionType.valueOf(_potionEnum)));
 
-
-
             if(potionEffects.containsKey("custom_potion_color")){
-                int customPotionColor = (int)(long)potionEffects.get("custom_potion_color");
+                int customPotionColor =  Utils.ensureInt(potionEffects, "custom_potion_color");
                 potionMeta.setColor(Color.fromRGB(customPotionColor));
             }
 
@@ -119,23 +117,22 @@ public class ItemsHelper {
                     JSONObject customPotionEffectItem = (JSONObject) customPotionEffectsArray.get(c);
                     int amplifier = 1;
                     if(customPotionEffectItem.containsKey("amplifier"))
-                        amplifier = (int)(long)customPotionEffectItem.get("amplifier");
-                    PotionEffect potionEffect = new PotionEffect(Objects.requireNonNull(PotionEffectType.getByKey(new NamespacedKey("minecraft", (String) customPotionEffectItem.get("id")))), (int)(long)customPotionEffectItem.get("duration"), amplifier);
+                        amplifier = Utils.ensureInt(customPotionEffectItem, "amplifier");
+                    PotionEffect potionEffect = new PotionEffect(Objects.requireNonNull(PotionEffectType.getByKey(new NamespacedKey("minecraft", (String) customPotionEffectItem.get("id")))), Utils.ensureInt(customPotionEffectItem, "duration"), amplifier);
                     if(customPotionEffectItem.containsKey("ambient"))
-                        potionEffect.withAmbient((int)(long)customPotionEffectItem.get("ambient") == 1);
+                        potionEffect.withAmbient(Utils.ensureInt(customPotionEffectItem, "ambient") == 1);
                     if(customPotionEffectItem.containsKey("show_particles"))
-                        potionEffect.withParticles((int)(long)customPotionEffectItem.get("show_particles") == 1);
+                        potionEffect.withParticles(Utils.ensureInt(customPotionEffectItem, "show_particles") == 1);
 
                     potionMeta.addCustomEffect(potionEffect, true);
                 }
             }
 
-
             itemStack.setItemMeta(potionMeta);
+            itemMeta = itemStack.getItemMeta();
         }else if((id.equals("writable_book") || id.equals("written_book"))){
             BookMeta bookMeta = (BookMeta) itemStack.getItemMeta();
             BookMeta.BookMetaBuilder bookMetaBuilder = bookMeta.toBuilder();
-
 
             if(props.containsKey("book_author"))
                 bookMetaBuilder.author(Component.text((String) props.get("book_author")));
@@ -144,10 +141,7 @@ public class ItemsHelper {
 
             if(props.containsKey("book_pages")){
                 JSONArray _bookPages = (JSONArray)props.get("book_pages");
-                List<Component> bookPages = new ArrayList<>();
-                for(int c = 0; c < _bookPages.size(); c++){
-                    bookPages.add(Component.text((String) _bookPages.get(c)));
-                }
+                List<Component> bookPages = getBookPages(_bookPages);
                 bookMetaBuilder.pages(bookPages);
             }
 
@@ -168,16 +162,14 @@ public class ItemsHelper {
 
             itemStack.setItemMeta(knowledgeBookMeta);
             itemMeta = itemStack.getItemMeta();
-        }else if(id.equals("filled_map") && props.containsKey("org_id") && props.containsKey("map_session")){
-            int org_id = (int)(long)props.get("org_id");
-            String session = (String) props.get("map_session");
+        }else if(id.equals("filled_map") && props.containsKey("map_checksum")){
+            String map_checksum = (String) props.get("map_checksum");
             MapMeta mapMeta = (MapMeta) itemStack.getItemMeta();
-            MapView mapView = ItemMapsHelper.instance.getMapView(org_id, session);
+            MapView mapView = ItemMapsHelper.instance.getMapView(map_checksum);
             mapMeta.setMapView(mapView);
             itemStack.setItemMeta(mapMeta);
             itemMeta = itemStack.getItemMeta();
         }
-
 
         //Fireworks
         if(props.containsKey("Fireworks")){
@@ -192,7 +184,7 @@ public class ItemsHelper {
             if(fireworks.containsKey("Fireworks")){
                 JSONObject _fireworks = (JSONObject) fireworks.get("Fireworks");
                 if(_fireworks.containsKey("flight")){
-                    int _flight = (int) (long) _fireworks.get("flight");
+                    int _flight = Utils.ensureInt(_fireworks, "flight");
                     _flight = Math.max(0, Math.min(127, _flight));
                     fireworkMeta.setPower(_flight);
                 }
@@ -208,14 +200,14 @@ public class ItemsHelper {
             }
 
             itemStack.setItemMeta(fireworkMeta);
+            itemMeta = itemStack.getItemMeta();
         }
-
 
         //General tags
         if(props.containsKey("GeneralTags")){
             JSONObject generalTags = (JSONObject) props.get("GeneralTags");
             if(generalTags.containsKey("unbreakable"))
-                itemMeta.setUnbreakable((int)(long)generalTags.get("unbreakable") == 1);
+                itemMeta.setUnbreakable(Utils.ensureInt(generalTags, "unbreakable") == 1);
             if(generalTags.containsKey("CanDestroy")){
                 JSONArray canDestroy = (JSONArray) generalTags.get("CanDestroy");
                 Collection<Namespaced> canDestroyCol = new JSONArray();
@@ -228,34 +220,48 @@ public class ItemsHelper {
                 if(!canDestroyCol.isEmpty())
                     itemMeta.setDestroyableKeys(canDestroyCol);
             }
+
+            itemStack.setItemMeta(itemMeta);
         }
-
-
-
 
         //Display Properties
         if(props.containsKey("DisplayProps") && !skipDisplayProps){
             JSONObject displayProps = (JSONObject) props.get("DisplayProps");
             boolean skipDisplayColor = false;
 
-            switch (id){
-                case "leather_boots", "leather_leggings", "leather_chestplate" -> {
-                    if (displayProps.containsKey("display_color")) {
-                        skipDisplayColor = true;
-                        LeatherArmorMeta armorMeta = (LeatherArmorMeta) itemMeta;
-                        armorMeta.setColor(org.bukkit.Color.fromRGB((int) (long) displayProps.get("display_color")));
-                        itemStack.setItemMeta(armorMeta);
-                    }
-                }
+            if(id.contains("potion") && displayProps.containsKey("map_color")) {
+                PotionMeta potionMeta = (PotionMeta) itemMeta;
+                potionMeta.setColor(org.bukkit.Color.fromRGB(Utils.ensureInt(displayProps, "map_color")));
+                itemStack.setItemMeta(potionMeta);
+                itemMeta = itemStack.getItemMeta();
+            } else if(id.equals("leather_boots") || id.equals("leather_leggings") || id.equals("leather_chestplate") && displayProps.containsKey("display_color")) {
+                skipDisplayColor = true;
+                LeatherArmorMeta armorMeta = (LeatherArmorMeta) itemMeta;
+                armorMeta.setColor(org.bukkit.Color.fromRGB(Utils.ensureInt(displayProps, "display_color")));
+                itemStack.setItemMeta(armorMeta);
+                itemMeta = itemStack.getItemMeta();
             }
 
-            if(displayProps.containsKey("display_name")){
-                TextComponent component = Component.text((String) displayProps.get("display_name"));
+
+
+            if(displayProps.containsKey("display_name") || displayProps.containsKey("display_loc_name")){
+                Component component = displayProps.containsKey("display_name") ?
+                        Component.text((String) displayProps.get("display_name")) :
+                        Component.translatable((String) displayProps.get("display_loc_name"));
                 if(displayProps.containsKey("display_color") && !skipDisplayColor){
-                    component.color(TextColor.color((int)(long)displayProps.get("display_color")));
+                    component = component.color(TextColor.color(Utils.ensureInt(displayProps, "display_color")));
                 }
                 itemMeta.displayName(component.asComponent());
             }
+
+            if(displayProps.containsKey("lore")) {
+                JSONArray loreJsonArray = (JSONArray) displayProps.get("lore");
+                List<Component> lore = new ArrayList<>();
+                loreJsonArray.forEach((loreJson) -> lore.add(Component.text((String) loreJson)));
+                itemMeta.lore(lore);
+            }
+
+            itemStack.setItemMeta(itemMeta);
         }
 
         //Block Tags
@@ -272,6 +278,8 @@ public class ItemsHelper {
                 }
                 if(!canPlaceOnCol.isEmpty())
                     itemMeta.setPlaceableKeys(canPlaceOnCol);
+
+                itemStack.setItemMeta(itemMeta);
             }
             if(blockTags.containsKey("BlockEntityTag")){
                 JSONObject blockEntity = (JSONObject) blockTags.get("BlockEntityTag");
@@ -312,11 +320,8 @@ public class ItemsHelper {
                         itemMeta = itemStack.getItemMeta();
                     }
                 }
-
-
             }
         }
-
 
         //Enchantments
         if(props.containsKey("EnchantmentsTags")){
@@ -326,7 +331,7 @@ public class ItemsHelper {
                 for (int c = 0; c < enchantments.size(); c++){
                     JSONObject enchantment = (JSONObject) enchantments.get(c);
                     Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) enchantment.get("id")));
-                    itemMeta.addEnchant(_enchantment, (int) (long)enchantment.get("lvl"), true);
+                    itemMeta.addEnchant(_enchantment, Utils.ensureInt(enchantment, "lvl"), true);
                 }
             }
             if(enchantmentsTags.containsKey("stored_enchantments")){
@@ -335,38 +340,59 @@ public class ItemsHelper {
                 for(int c = 0; c < storedEnchantments.size(); c++){
                     JSONObject storedEnchantment = (JSONObject) storedEnchantments.get(c);
                     Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) storedEnchantment.get("id")));
-                    storageMeta.addStoredEnchant(_enchantment, (int) (long)storedEnchantment.get("lvl"), true);
+                    storageMeta.addStoredEnchant(_enchantment, Utils.ensureInt(storedEnchantment,"lvl"), true);
                 }
-                itemStack.setItemMeta(storageMeta);
-            }
-        }
 
+                itemStack.setItemMeta(storageMeta);
+                itemMeta = itemStack.getItemMeta();
+            }
+
+            itemStack.setItemMeta(itemMeta);
+        }
 
         //Attribute Modifiers
         if(props.containsKey("AttributeModifiers")){
-            JSONArray attributeModifiers = (JSONArray) props.get("AttributeModifiers");
-            for(int c = 0; c < attributeModifiers.size(); c++){
-                JSONObject attributeModifier = (JSONObject) attributeModifiers.get(c);
-                org.bukkit.attribute.Attribute _attribute = org.bukkit.attribute.Attribute.valueOf(((String) attributeModifier.get("attribute_name")).toUpperCase());
-                String _attributeName = (String)attributeModifier.getOrDefault("name","");
-                Double _amount = (Double)attributeModifier.getOrDefault("amount",0.0d);
-                org.bukkit.attribute.AttributeModifier _attributeModifier = null;
-                AttributeModifier.Operation _operation = AttributeModifier.Operation.valueOf((String) attributeModifier.get("operation"));
-                if(attributeModifier.containsKey("uuid_most") && attributeModifier.containsKey("uuid_least")){
-                    UUID _uuid = new UUID((long) attributeModifier.get("uuid_most"), (long) attributeModifier.get("uuid_least"));
-                    if(attributeModifier.containsKey("slot"))
-                        _attributeModifier = new AttributeModifier(_uuid,
+            JSONArray attributeModifiersArray = (JSONArray) props.get("AttributeModifiers");
+            for(int c = 0; c < attributeModifiersArray.size(); c++){
+                try {
+                    JSONObject attributeModifierObject = (JSONObject) attributeModifiersArray.get(c);
+                    String legacyAttributeModifierAttributeName = (String) attributeModifierObject.get("attribute_name");
+                    Attribute _attribute = Utils.getAttribute(legacyAttributeModifierAttributeName);
+                    if(_attribute == null)
+                        continue;
+
+                    String legacyAttributeModifierName = (String) attributeModifierObject.getOrDefault("name", legacyAttributeModifierAttributeName);
+                    String _attributeName = legacyAttributeModifierName;
+                    Attribute _attribute1 = Utils.getAttribute(legacyAttributeModifierName);
+                    if(_attribute1 != null)  {
+                        _attributeName = _attribute1.getKey().getKey();
+                    }
+
+                    Double _amount = Utils.ensureDouble(attributeModifierObject, "amount", 0.0d);
+
+                    org.bukkit.attribute.AttributeModifier _attributeModifier = null;
+                    AttributeModifier.Operation _operation = AttributeModifier.Operation.valueOf((String) attributeModifierObject.get("operation"));
+
+                    UUID _uuid = null;
+                    if (attributeModifierObject.containsKey("uuid_most") && attributeModifierObject.containsKey("uuid_least"))
+                        _uuid = new UUID((long) attributeModifierObject.get("uuid_most"), (long) attributeModifierObject.get("uuid_least"));
+                    else
+                        _uuid = UUID.randomUUID();
+
+                    if (attributeModifierObject.containsKey("slot"))
+                        _attributeModifier = new AttributeModifier(
+                                _uuid,
                                 _attributeName,
                                 _amount, _operation,
-                                EquipmentSlot.valueOf(((String) attributeModifier.get("slot")).toUpperCase()));
+                                EquipmentSlot.valueOf(((String) attributeModifierObject.get("slot")).toUpperCase()));
                     else
                         _attributeModifier = new AttributeModifier(_uuid, _attributeName, _amount, _operation);
-                }else
-                    _attributeModifier = new org.bukkit.attribute.AttributeModifier(_attributeName, _amount, _operation);
-                itemMeta.addAttributeModifier(_attribute, _attributeModifier);
+                    itemMeta.addAttributeModifier(_attribute, _attributeModifier);
+                }catch (Exception ex) { }
             }
-        }
 
+            itemStack.setItemMeta(itemMeta);
+        }
 
         return itemStack;
     }
@@ -391,39 +417,78 @@ public class ItemsHelper {
 
         if(fireworkProps.containsKey("colors")){
             JSONArray _colors = (JSONArray) fireworkProps.get("colors");
-            List<Color> cols = getColors(_colors);
+            List<Color> cols = Utils.getColors(_colors);
             if(!cols.isEmpty())
                 fireworkEffectBuilder.withColor(cols);
         }
 
         if(fireworkProps.containsKey("fade_colors")){
             JSONArray _colors = (JSONArray) fireworkProps.get("fade_colors");
-            List<Color> cols = getColors(_colors);
+            List<Color> cols = Utils.getColors(_colors);
             if(!cols.isEmpty())
                 fireworkEffectBuilder.withFade(cols);
         }
 
-        if(fireworkProps.containsKey("flicker") && (int)(long)fireworkProps.get("flicker") == 1)
+        if(fireworkProps.containsKey("flicker") && Utils.ensureInt(fireworkProps, "flicker") == 1)
             fireworkEffectBuilder.withFlicker();
 
-        if(fireworkProps.containsKey("trail") && (int)(long)fireworkProps.get("trail") == 1)
+        if(fireworkProps.containsKey("trail") && Utils.ensureInt(fireworkProps, "trail") == 1)
             fireworkEffectBuilder.withTrail();
 
         return fireworkEffectBuilder.build();
     }
 
     /**
-     * Get a list of colors based on each color integer value inside the JSON array
-     * @param colors JSON array containing integers representing colors
-     * @return List of colors
+     * Get a pages of components from the json string array, with proper decoding of each page,
+     * ex. if contains JSON encoded text or if It's just regular text while also handling any legacy code (§)
+     * @param rawPages A JSON array of strings from a book
+     * @return A list of components to be set as pages in a book meta
      */
-    private static List<Color> getColors(JSONArray colors){
-        List<Color> cols = new ArrayList<>();
-        for(int c = 0; c < colors.size(); c++){
-            int col = (int) (long) colors.get(c);
-            cols.add(Color.fromRGB(col));
+    public static List<Component> getBookPages(JSONArray rawPages) {
+        List<Component> pages = new ArrayList<>();
+        for(int p = 0; p < rawPages.size(); p++) {
+            String rawPage = (String) rawPages.get(p);
+            Component page;
+            if(rawPage.startsWith("{") && rawPage.endsWith("}") && rawPage.contains(":")) {
+                boolean hasLegacyCodes = rawPage.contains("§");
+                try {
+                    page = GsonComponentSerializer.gson().deserialize(rawPage);
+                    if(hasLegacyCodes)
+                        page = fixLegacyCodesInComponent(page);
+                }catch (Exception ex) {
+                    page = Component.text(rawPage);
+                }
+            }else {
+                page = Component.text(rawPage);
+            }
+
+            pages.add(page);
         }
-        return cols;
+
+        return pages;
+    }
+
+    /**
+     * Fix the component and It's children content from legacy code (§)
+     * @param component The component to fix
+     * @return The fixed component and It's fixed children, if it has any
+     */
+    public static Component fixLegacyCodesInComponent(Component component) {
+        List<Component> fixedChildren = component.children().stream().map(ItemsHelper::fixLegacyCodesInComponent).toList();
+        Component _component = component;
+
+        if(component instanceof TextComponent textComponent) {
+            TextComponent fixedTextComponent = LegacyComponentSerializer.legacySection().deserialize(textComponent.content());
+            _component = fixedTextComponent
+                    .style(textComponent.style().merge(fixedTextComponent.style(), Style.Merge.Strategy.ALWAYS))
+                    .clickEvent(textComponent.clickEvent())
+                    .hoverEvent(textComponent.hoverEvent())
+                    .insertion(textComponent.insertion());
+        }
+
+        List<Component> children = new ArrayList<>(_component.children());
+        children.addAll(fixedChildren);
+        return _component.children(children);
     }
 
     /**
@@ -439,8 +504,8 @@ public class ItemsHelper {
             if(_id.startsWith("minecraft:")) {
                 _id = _id.substring(10);
                 JSONObject _props = (JSONObject) _item.getOrDefault("Properties", new JSONObject());
-                int _slot = (int) (long) _props.get("slot");
-                int _count = (int) (long) _props.get("count");
+                int _slot = Utils.ensureInt(_props, "slot");
+                int _count = Utils.ensureInt(_props, "count");
 
                 try {
                     ItemStack itemStack = ItemsHelper.getItem(_id, _props);

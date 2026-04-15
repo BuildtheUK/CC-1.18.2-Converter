@@ -33,10 +33,10 @@ public class ArmorStandHelper {
      */
     public static void propArmorStand(ArmorStand armorStand, JSONObject properties) throws Exception {
         Utils.prepEntity(armorStand, properties);
-        armorStand.setArms((int) (long)properties.get("ShowArms") == 1);
-        armorStand.setInvisible((int) (long) properties.get("Invisible") == 1);
-        armorStand.setSmall((int) (long) properties.get("Small") == 1);
-        armorStand.setBasePlate((int) (long)properties.get("NoBasePlate") == 0);
+        armorStand.setArms(Utils.ensureInt(properties, "ShowArms") == 1);
+        armorStand.setInvisible(Utils.ensureInt(properties, "Invisible") == 1);
+        armorStand.setSmall(Utils.ensureInt(properties, "Small") == 1);
+        armorStand.setBasePlate(Utils.ensureInt(properties, "NoBasePlate") == 0);
 
         if(properties.containsKey("Pose")) {
             JSONObject poseObject = (JSONObject) properties.get("Pose");

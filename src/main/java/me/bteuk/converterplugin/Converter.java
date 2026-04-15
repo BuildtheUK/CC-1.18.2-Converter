@@ -64,9 +64,9 @@ public class Converter {
         //Add them to the objects per chunk hash map
         for(Object object : blocksObjects){
             JSONObject jObject = (JSONObject) object;
-            int chunkX = (int) (long) jObject.get("x") >> 4;
-            int chunkY = (int) (long) jObject.get("y") >> 4;
-            int chunkZ = (int) (long) jObject.get("z") >> 4;
+            int chunkX = Utils.ensureInt(jObject, "x") >> 4;
+            int chunkY = Utils.ensureInt(jObject, "y") >> 4;
+            int chunkZ = Utils.ensureInt(jObject, "z") >> 4;
             String chunkIndex = String.format("%1$d,%2$d,%3$d", chunkX, chunkY, chunkZ);
 
             if(objectsPerChunk.containsKey(chunkIndex))
@@ -133,7 +133,7 @@ public class Converter {
                 for(JSONObject jObject : chunkObjects){
                     //Check if jObject is blocks
                     if(jObject.containsKey("block")){
-                        Location blockLocation = new Location(world, (int) (long) jObject.get("x"), (int) (long) jObject.get("y"), (int) (long) jObject.get("z"));
+                        Location blockLocation = new Location(world, Utils.ensureInt(jObject, "x"), Utils.ensureInt(jObject, "y"), Utils.ensureInt(jObject, "z"));
 
                         try {
                             setBlockData(jObject, blockLocation);
@@ -871,8 +871,8 @@ public class Converter {
                 //If type is a player head, set the texture, ect.
                 if (type.equals("player_head")) {
 
-                    //If texture is null, skip.
-                    if (properties.get("texture") != null) {
+                    //If texture is set or profile name is set
+                    if (properties.get("texture") != null || properties.containsKey("profileName")) {
 
                         if (!(block.getState() instanceof Skull skull)) {
                             throw new BlockNotFoundException("Found " + block.getType().name() + " expected " + object.get("block") + " at " + l.getX() + "," + l.getY() + "," + l.getZ());
@@ -880,18 +880,25 @@ public class Converter {
 
                         skull.setType(block.getType());
 
-                        String id = (String) properties.get("id");
+                        if(properties.containsKey("texture")) {
+                            String id = (String) properties.get("id");
 
-                        UUID uuid;
-                        if (id == null) {
-                            uuid = UUID.randomUUID();
-                        } else {
-                            uuid = UUID.fromString(id);
+                            UUID uuid;
+                            if (id == null) {
+                                uuid = UUID.randomUUID();
+                            } else {
+                                uuid = UUID.fromString(id);
+                            }
+                            PlayerProfile profile = Bukkit.createProfile(uuid);
+                            profile.getProperties().add(new ProfileProperty("textures", (String) properties.get("texture")));
+                            skull.setPlayerProfile(profile);
+                        }else {
+                            Player player = Bukkit.getOfflinePlayer((String) properties.get("profileName")).getPlayer();
+                            if(player != null) {
+                                PlayerProfile profile = player.getPlayerProfile();
+                                skull.setPlayerProfile(profile);
+                            }
                         }
-                        PlayerProfile profile = Bukkit.createProfile(uuid);
-                        profile.getProperties().add(new ProfileProperty("textures", (String) properties.get("texture")));
-
-                        skull.setPlayerProfile(profile);
 
                         skull.update(false, false); // so that the result can be seen
 
@@ -910,7 +917,7 @@ public class Converter {
                 }
 
                 //Set the note from config.
-                noteBlock.setNote(new Note((int) (long) properties.get("note")));
+                noteBlock.setNote(new Note(Utils.ensureInt(properties, "note")));
 
                 //Set the instrument.
                 //Get the block below and check which instrument it should be.
@@ -1833,7 +1840,7 @@ public class Converter {
                     List<Integer> beamTarget = Utils.getIntegerListFromJson(objectProps, "beam_target");
                     enderCrystal.setBeamTarget(new Location(location.getWorld(), beamTarget.get(0), beamTarget.get(1), beamTarget.get(2)));
                 }
-                enderCrystal.setShowingBottom((objectProps.containsKey("show_button") ? (int) (long)objectProps.get("show_button") == 1 : false));
+                enderCrystal.setShowingBottom((objectProps.containsKey("show_button") ? Utils.ensureInt(objectProps, "show_button") == 1 : false));
             }
             case "minecraft:painting" -> {
                 JSONArray tilePos = (JSONArray) objectProps.get("tile_pos");
@@ -1851,9 +1858,9 @@ public class Converter {
                 ItemFrame itemFrame = (ItemFrame) world.spawnEntity(location, EntityType.ITEM_FRAME);
                 Utils.prepEntity(itemFrame, objectProps);
                 if(objectProps.containsKey("fixed"))
-                    itemFrame.setFixed((int)(long)objectProps.get("fixed")==1);
+                    itemFrame.setFixed(Utils.ensureInt(objectProps, "fixed")==1);
                 if(objectProps.containsKey("invisible"))
-                    itemFrame.setVisible((int)(long)objectProps.get("invisible")==0);
+                    itemFrame.setVisible(Utils.ensureInt(objectProps, "invisible")==0);
                 if(objectProps.containsKey("item")){
                     JSONObject item = (JSONObject) objectProps.get("item");
                     JSONObject itemProps = (JSONObject) item.getOrDefault("Properties", new JSONObject());

@@ -21,7 +21,7 @@ public class MinecartHelper {
     public static void setCommonMinecartProps(Minecart minecart, JSONObject props){
         Utils.prepEntity(minecart, props);
 
-        if(props.containsKey("display_tile") && (int) (long) props.get("display_tile") == 1){
+        if(props.containsKey("display_tile") && Utils.ensureInt(props, "display_tile") == 1){
             String displayTileBlock = ((String)props.get("display_tile_block")).substring(10);
             Material displayTileMaterial = Material.getMaterial(displayTileBlock.toUpperCase());
             if(props.containsKey("display_tile_block_states")){
@@ -58,7 +58,7 @@ public class MinecartHelper {
         InventoryHelper.prepInventoryChest(hopperMinecart, props);
         InventoryHelper.prepLootableChest(hopperMinecart, props);
         if(props.containsKey("enabled"))
-            hopperMinecart.setEnabled((int) (long) props.get("enabled") == 1);
+            hopperMinecart.setEnabled(Utils.ensureInt(props, "enabled") == 1);
     }
 
     /**
@@ -68,7 +68,7 @@ public class MinecartHelper {
      */
     public static void prepFurnaceMinecart(PoweredMinecart furnaceMinecart, JSONObject props){
         if(props.containsKey("fuel"))
-            furnaceMinecart.setFuel((int) (long) props.get("fuel"));
+            furnaceMinecart.setFuel(Utils.ensureInt(props, "fuel"));
         if(props.containsKey("push_x"))
             furnaceMinecart.setPushX((double) props.get("push_x"));
         if(props.containsKey("push_z"))

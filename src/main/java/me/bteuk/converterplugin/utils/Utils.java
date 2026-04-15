@@ -1,6 +1,8 @@
 package me.bteuk.converterplugin.utils;
 
+import org.bukkit.Color;
 import org.bukkit.DyeColor;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.EulerAngle;
@@ -64,7 +66,7 @@ public class Utils {
      * @param properties The basic properties to apply to the entity
      */
     public static void prepEntity(Entity entity, JSONObject properties){
-        entity.setGravity((int) (long) properties.getOrDefault("NoGravity", (long)0) == 1);
+        entity.setGravity(properties.containsKey("NoGravity") ? Utils.ensureInt( properties, "NoGravity") == 1 : false);
         if(properties.containsKey("Rotation")){
             JSONArray entityRotationArray = (JSONArray) properties.get("Rotation");
             entity.setRotation( (float) (double)entityRotationArray.get(0), (float) (double)entityRotationArray.get(1));
@@ -332,5 +334,74 @@ public class Utils {
                 return DyeColor.WHITE;
             }
         }
+    }
+
+    /**
+     * Get the Attribute from the legacy attribute name
+     * @param legacyAttributeName Legacy attribute modifier name
+     * @return The Attribute of the name, else null if none was found
+     */
+    public static Attribute getAttribute(String legacyAttributeName) {
+        return switch (legacyAttributeName) {
+            case "generic.maxHealth" -> Attribute.GENERIC_MAX_HEALTH;
+            case "zombie.spawnReinforcements" -> Attribute.ZOMBIE_SPAWN_REINFORCEMENTS;
+            case "horse.jumpStrength" -> Attribute.HORSE_JUMP_STRENGTH;
+            case "generic.followRange" -> Attribute.GENERIC_FOLLOW_RANGE;
+            case "generic.knockbackResistance" -> Attribute.GENERIC_KNOCKBACK_RESISTANCE;
+            case "generic.movementSpeed" -> Attribute.GENERIC_MOVEMENT_SPEED;
+            case "generic.flyingSpeed" -> Attribute.GENERIC_FLYING_SPEED;
+            case "generic.attackDamage" -> Attribute.GENERIC_ATTACK_DAMAGE;
+            case "generic.attackKnockback" -> Attribute.GENERIC_ATTACK_KNOCKBACK;
+            case "generic.attackSpeed" -> Attribute.GENERIC_ATTACK_SPEED;
+            case "generic.armorToughness" -> Attribute.GENERIC_ARMOR_TOUGHNESS;
+            case "generic.armor" -> Attribute.GENERIC_ARMOR;
+            case "generic.luck" -> Attribute.GENERIC_LUCK;
+            default -> null;
+        };
+    }
+
+    /**
+     * Get a list of colors based on each color integer value inside the JSON array
+     * @param colors JSON array containing integers representing colors
+     * @return List of colors
+     */
+    public static List<Color> getColors(JSONArray colors){
+        List<Color> cols = new ArrayList<>();
+        for(int c = 0; c < colors.size(); c++){
+            int col = (int) (long) colors.get(c);
+            cols.add(Color.fromRGB(col));
+        }
+        return cols;
+    }
+
+    /**
+     * Ensure a double value gets returned from the key in a json object, else return the default value
+     * @param jsonObject The JSON object containing the key
+     * @param key Name of the key of the double value
+     * @param defaultValue The default value to return if the key is not found
+     * @return The double value at the key, else default value
+     */
+    public static double ensureDouble(JSONObject jsonObject, String key, double defaultValue) {
+        Object rawValue = jsonObject.getOrDefault(key, null);
+        if(rawValue != null) {
+            if(rawValue instanceof Double doubleValue) return doubleValue;
+            else if(rawValue instanceof Integer integerValue) return integerValue.doubleValue();
+            else if(rawValue instanceof Long longValue) return longValue.doubleValue();
+        }
+
+        return defaultValue;
+    }
+
+    /**
+     * Ensure an int value gets returned from the json object
+     * @param jsonObject The JSON object containing the key
+     * @param key Name of the key of the int value
+     * @return The int value at the key
+     */
+    public static int ensureInt(JSONObject jsonObject, String key) {
+        Object rawValue = jsonObject.get(key);
+        if(rawValue instanceof Long longValue) return longValue.intValue();
+
+        return (Integer)rawValue;
     }
 }

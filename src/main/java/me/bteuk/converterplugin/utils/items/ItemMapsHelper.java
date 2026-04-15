@@ -1,5 +1,6 @@
 package me.bteuk.converterplugin.utils.items;
 
+import me.bteuk.converterplugin.utils.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.map.MapView;
@@ -79,153 +80,134 @@ public class ItemMapsHelper {
         List<Path> mapsFiles = entries.toList();
 
         List<String> exceptions = new ArrayList<>();
+        Reader reader;
 
-        DirectoryStream<Path> mapSessionFolders = Files.newDirectoryStream(mapsPath);
-        for(Path mapSessionFolder : mapSessionFolders){
-            Path mapsConfigPath = mapSessionFolder.resolve("maps.json");
-            if(Files.exists(mapsConfigPath)) {
+        DirectoryStream<Path> mapFiles = Files.newDirectoryStream(mapsPath);
+        for(Path mapFile : mapFiles){
+            String map_checksum = mapFile.getFileName().toString();
+            map_checksum = map_checksum.substring(0, map_checksum.length() - 5);
 
-                Reader reader = new FileReader(mapsConfigPath.toFile());
-                JSONObject mapsConfigItem = (JSONObject) parser.parse(reader);
+            //Only create map item if it wasn't yet converted beforehand
+            if(!mapsID.containsKey(map_checksum)) {
+                JSONObject mappingID = new JSONObject();
+
+                reader = new FileReader(mapFile.toFile());
+                JSONObject mapItem = (JSONObject) parser.parse(reader);
                 reader.close();
 
-                String mapSession = (String) mapsConfigItem.get("maps_session");
-                JSONArray mapsArray = (JSONArray) mapsConfigItem.get("maps");
+                MapView mapView = Bukkit.createMap(world);
+                int new_id = mapView.getId();
 
-                JSONObject convertedMapsItem = new JSONObject();
-
-                if(mapsID.containsKey(mapSession))
-                    convertedMapsItem = (JSONObject)mapsID.get(mapSession);
-
-                for(int m = 0; m < mapsArray.size(); m++) {
-                    String mapName = (String) mapsArray.get(m);
-
-                    Path mapPath = mapSessionFolder.resolve(mapName  + ".json");
-                    if(Files.exists(mapPath)) {
-                        int id = Integer.parseInt(mapName.substring(4));
-                        JSONObject mappingID = new JSONObject();
-
-                        reader = new FileReader(mapPath.toFile());
-                        JSONObject mapItem = (JSONObject) parser.parse(reader);
-                        reader.close();
-
-                        MapView mapView = Bukkit.createMap(world);
-                        int new_id = mapView.getId();
-
-                        byte scale = (byte) (long) mapItem.get("scale");
-                        switch (scale) {
-                            case 0 -> mapView.setScale(MapView.Scale.CLOSEST);
-                            case 1 -> mapView.setScale(MapView.Scale.CLOSE);
-                            case 2 -> mapView.setScale(MapView.Scale.NORMAL);
-                            case 3 -> mapView.setScale(MapView.Scale.FAR);
-                            case 4 -> mapView.setScale(MapView.Scale.FARTHEST);
-                        }
-
-                        if (mapItem.containsKey("unlimited_tracking"))
-                            mapView.setUnlimitedTracking((int) (long) mapItem.get("unlimited_tracking") == 1);
-
-                        mapView.setCenterX((int) (long) mapItem.get("x_center"));
-                        mapView.setCenterZ((int) (long) mapItem.get("z_center"));
-
-                        try {
-                            JSONArray _colors = (JSONArray) mapItem.get("colors");
-                            byte[] cols = new byte[_colors.size()];
-                            for (int c = 0; c < _colors.size(); c++)
-                                cols[c] = (byte) (long) _colors.get(c);
-
-                            Field worldMapField = mapView.getClass().getDeclaredField("worldMap");
-                            worldMapField.setAccessible(true);
-                            Object worldMap = worldMapField.get(mapView);
-                            //MapsViewReflection.WORLDMAP_PROXY.setColors(worldMap, cols);
-
-                            //String colorFieldName = "g";
-                            //Boolean foundColorField = false;
-                            //String vanillaRenderFieldName = "vanillaRender";
-                            //Boolean foundRenderDataField = false;
-                            Field[] worldMapFields = worldMap.getClass().getDeclaredFields();
-                            for (Field _worldMapField : worldMapFields) {
-                                if (_worldMapField.getType() == byte[].class) {
-                                    _worldMapField.setAccessible(true);
-                                    byte[] colField = (byte[]) _worldMapField.get(worldMap);
-                                    if (colField.length == cols.length)
-                                        _worldMapField.set(worldMap, cols);
-                                    _worldMapField.setAccessible(false);
-                                } else if (_worldMapField.getType().getName().endsWith("RenderData")) {
-                                    _worldMapField.setAccessible(true);
-                                    Object worldMapRenderData = _worldMapField.get(worldMap);
-
-                                    String renderDataBufferFieldName = "buffer";
-                                    Field[] renderDataFields = worldMapRenderData.getClass().getDeclaredFields();
-                                    for (Field renderDataField : renderDataFields)
-                                        if (renderDataField.getType() == byte[].class && !renderDataField.getName().equals(renderDataBufferFieldName))
-                                            renderDataBufferFieldName = renderDataField.getName();
-
-                                    Field renderDataBufferField = worldMapRenderData.getClass().getDeclaredField(renderDataBufferFieldName);
-                                    renderDataBufferField.setAccessible(true);
-                                    renderDataBufferField.set(worldMapRenderData, cols);
-                                    renderDataBufferField.setAccessible(false);
-
-                                    _worldMapField.set(worldMap, worldMapRenderData);
-                                    _worldMapField.setAccessible(false);
-                                }
-                            }
-
-                            worldMapField.set(mapView, worldMap);
-                            worldMapField.setAccessible(false);
-
-                        } catch (Exception e) {
-                            exceptions.add(e.getMessage());
-                        }
-
-                        world.save();
-
-                        mappingID.put("new_id", new_id);
-                        convertedMapsItem.put("map_" + id, mappingID);
-
-                        if (Files.exists(mapPath))
-                            try {
-                                Files.delete(mapPath);
-                            } catch (IOException exception) {
-                                String w = "2";
-                            }
-
-                        //mapView = Bukkit.getMap(new_id);
-
-                        /*
-                        //Manually edit the map_<#>.dat file
-                        Path mapDatFile = dataPath.resolve("map_" + new_id + ".dat");
-
-                        try{
-                            NamedTag namedMapTag = NBTUtil.read(mapDatFile.toFile());
-                            CompoundTag mapTag = (CompoundTag) namedMapTag.getTag();
-                            CompoundTag mapDataTag = mapTag.getCompoundTag("data");
-
-                            JSONArray _colors = (JSONArray) mapItem.get("colors");
-                            byte[] cols = new byte[_colors.size()];
-                            for(int c = 0; c < _colors.size(); c++)
-                                cols[c] = (byte)(long)_colors.get(c);
-                            ByteArrayTag colors = new ByteArrayTag(cols);
-                            mapDataTag.put("colors", colors);
-
-                            mapTag.put("data", mapDataTag);
-                            namedMapTag.setTag(mapTag);
-                            NBTUtil.write(namedMapTag, mapDatFile.toFile());
-
-                        }catch (Exception ex){
-                            logger.warning(String.format(""));
-                        }*/
-                    }
+                byte scale = (byte) (long) mapItem.get("scale");
+                switch (scale) {
+                    case 0 -> mapView.setScale(MapView.Scale.CLOSEST);
+                    case 1 -> mapView.setScale(MapView.Scale.CLOSE);
+                    case 2 -> mapView.setScale(MapView.Scale.NORMAL);
+                    case 3 -> mapView.setScale(MapView.Scale.FAR);
+                    case 4 -> mapView.setScale(MapView.Scale.FARTHEST);
                 }
 
-                mapsID.put(mapSession, convertedMapsItem);
+                if (mapItem.containsKey("unlimited_tracking"))
+                    mapView.setUnlimitedTracking(Utils.ensureInt(mapItem, "unlimited_tracking") == 1);
 
-                //Delete the config file and the now empty map session folder
-                Files.delete(mapsConfigPath);
-                mapSessionFolder.toFile().delete();
+                mapView.setCenterX(Utils.ensureInt(mapItem, "x_center"));
+                mapView.setCenterZ(Utils.ensureInt(mapItem, "z_center"));
+
+                try {
+                    JSONArray _colors = (JSONArray) mapItem.get("colors");
+                    byte[] cols = new byte[_colors.size()];
+                    for (int c = 0; c < _colors.size(); c++)
+                        cols[c] = (byte) (long) _colors.get(c);
+
+                    Field worldMapField = mapView.getClass().getDeclaredField("worldMap");
+                    worldMapField.setAccessible(true);
+                    Object worldMap = worldMapField.get(mapView);
+                    //MapsViewReflection.WORLDMAP_PROXY.setColors(worldMap, cols);
+
+                    //String colorFieldName = "g";
+                    //Boolean foundColorField = false;
+                    //String vanillaRenderFieldName = "vanillaRender";
+                    //Boolean foundRenderDataField = false;
+                    Field[] worldMapFields = worldMap.getClass().getDeclaredFields();
+                    for (Field _worldMapField : worldMapFields) {
+                        if (_worldMapField.getType() == byte[].class) {
+                            _worldMapField.setAccessible(true);
+                            byte[] colField = (byte[]) _worldMapField.get(worldMap);
+                            if (colField.length == cols.length)
+                                _worldMapField.set(worldMap, cols);
+                            _worldMapField.setAccessible(false);
+                        } else if (_worldMapField.getType().getName().endsWith("RenderData")) {
+                            _worldMapField.setAccessible(true);
+                            Object worldMapRenderData = _worldMapField.get(worldMap);
+
+                            String renderDataBufferFieldName = "buffer";
+                            Field[] renderDataFields = worldMapRenderData.getClass().getDeclaredFields();
+                            for (Field renderDataField : renderDataFields)
+                                if (renderDataField.getType() == byte[].class && !renderDataField.getName().equals(renderDataBufferFieldName))
+                                    renderDataBufferFieldName = renderDataField.getName();
+
+                            Field renderDataBufferField = worldMapRenderData.getClass().getDeclaredField(renderDataBufferFieldName);
+                            renderDataBufferField.setAccessible(true);
+                            renderDataBufferField.set(worldMapRenderData, cols);
+                            renderDataBufferField.setAccessible(false);
+
+                            _worldMapField.set(worldMap, worldMapRenderData);
+                            _worldMapField.setAccessible(false);
+                        }
+                    }
+
+                    worldMapField.set(mapView, worldMap);
+                    worldMapField.setAccessible(false);
+
+                } catch (Exception e) {
+                    exceptions.add(e.getMessage());
+                }
+
+                world.save();
+
+                mapsID.put(map_checksum, new_id);
+
+                //mapView = Bukkit.getMap(new_id);
+
+                /*
+                //Manually edit the map_<#>.dat file
+                Path mapDatFile = dataPath.resolve("map_" + new_id + ".dat");
+
+                try{
+                    NamedTag namedMapTag = NBTUtil.read(mapDatFile.toFile());
+                    CompoundTag mapTag = (CompoundTag) namedMapTag.getTag();
+                    CompoundTag mapDataTag = mapTag.getCompoundTag("data");
+
+                    JSONArray _colors = (JSONArray) mapItem.get("colors");
+                    byte[] cols = new byte[_colors.size()];
+                    for(int c = 0; c < _colors.size(); c++)
+                        cols[c] = (byte)(long)_colors.get(c);
+                    ByteArrayTag colors = new ByteArrayTag(cols);
+                    mapDataTag.put("colors", colors);
+
+                    mapTag.put("data", mapDataTag);
+                    namedMapTag.setTag(mapTag);
+                    NBTUtil.write(namedMapTag, mapDatFile.toFile());
+
+                }catch (Exception ex){
+                    logger.warning(String.format(""));
+                }*/
+            }
+
+            //Delete the map json file
+            try {
+                Files.delete(mapFile);
+            } catch (IOException exception) {
+                exceptions.add(exception.getMessage());
             }
         }
 
-
+        //Delete the now empty maps folder
+        try {
+            Files.delete(mapsPath);
+        }catch (Exception ex) {
+            exceptions.add(ex.getMessage());
+        }
 
         writeMapsID();
 
@@ -240,26 +222,14 @@ public class ItemMapsHelper {
     }
 
     /**
-     * Get an existing MapView from the ID, if the mapsID contains the session, else create a new MapView
-     * @param id The original ID of the map from the original world
-     * @param session A random string generated at the time the original world was converted
+     * Get an existing MapView from the original map file checksum, if the mapsID contains the checksum string, else create a new MapView
+     * @param map_checksum The original checksum of the map item file from the original world
      * @return An existing MapView with the mapped new ID, or a brand new MapView
      */
-    public MapView getMapView(int id, String session) {
-        if(mapsID.containsKey(session)) {
-            JSONObject sessionMaps = (JSONObject) mapsID.get(session);
-            if (sessionMaps.containsKey("map_" + id)) {
-                JSONObject mappingID = (JSONObject) sessionMaps.get("map_" + id);
-                int new_id = 0;
-                Object raw_new_id = mappingID.get("new_id");
-                if (raw_new_id instanceof Long) {
-                    Long longNewID = (Long) raw_new_id;
-                    new_id = longNewID.intValue();
-                } else if (raw_new_id instanceof Integer) {
-                    new_id = (Integer) raw_new_id;
-                }
-                return Bukkit.getMap(new_id);
-            }
+    public MapView getMapView(String map_checksum) {
+        if(mapsID.containsKey(map_checksum)) {
+            int new_id = Utils.ensureInt(mapsID, map_checksum);
+            return Bukkit.getMap(new_id);
         }
 
         return Bukkit.createMap(world);
