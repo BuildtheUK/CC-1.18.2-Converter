@@ -149,9 +149,6 @@ public class WorldIterator {
                 break;
             }
         }
-
-        if(!MinecraftIDConverter.instance.convertedMapItems.isEmpty())
-            MinecraftIDConverter.instance.writeMapsSessionConfig();
     }
 
     private static SaveCubeColumns createSave(Path path) {

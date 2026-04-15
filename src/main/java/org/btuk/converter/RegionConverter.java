@@ -698,13 +698,15 @@ public class RegionConverter extends Thread {
     private CompoundTag getCubeTag(ByteBuffer cube) throws IOException {
         try {
             return (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.array())).getTag();
-        }catch (Exception ex) {
+        }catch (MaxDepthReachedException ex) {
             log.error("Cube ({},{},{}) in file {} has an greater depth then the default NBT max depth of 512 - possible corrupt cube. \nIncreasing it to 1024 to try and read the whole cube", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ(), e3d.getRegionKey().getName());
             try {
                 return (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.array()), 1024).getTag();
             }catch (MaxDepthReachedException e) {
                 log.error("Skipping cube ({},{},{})", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ());
             }
+        }catch (Exception ex) {
+            throw ex;
         }
 
         return null;

@@ -1,5 +1,8 @@
 package org.btuk.converter.utils;
 
+import com.google.common.hash.HashCode;
+import com.google.common.hash.Hashing;
+import com.google.common.io.ByteSource;
 import org.btuk.converter.Main;
 import net.querz.nbt.io.NBTUtil;
 import net.querz.nbt.tag.*;
@@ -8,6 +11,7 @@ import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -6465,10 +6469,9 @@ public class MinecraftIDConverter {
                 }
                 case "filled_map" -> {
                     try {
-                        short org_id = instance.convertMapItem(damage);
-                        if(org_id != -1) {
-                            props.put("org_id", org_id);
-                            props.put("map_session", MinecraftIDConverter.instance.mapSession);
+                        String map_checksum = instance.convertMapItem(damage);
+                        if(map_checksum != null) {
+                            props.put("map_checksum", map_checksum);
                         }
                     }catch (Exception ex){
                         log.error(ex.toString());
@@ -6893,38 +6896,41 @@ public class MinecraftIDConverter {
 
     public Path dataPath;
     public Path mapsPath;
-    public String mapSession = UUID.randomUUID().toString();
-    public ConcurrentHashMap<Short, CompletableFuture<Short>> convertedMapItems = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Short, CompletableFuture<String>> convertedMapItems = new ConcurrentHashMap<>();
 
     /**
      * Return a CompletableFuture to convert a Filled Map Item based on the ID of the Item
      * @param id The short ID of the Filled Map
-     * @return A CompletableFuture to process the map item
+     * @return The checksum of the map file
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    public short convertMapItem(short id) throws ExecutionException, InterruptedException {
-        CompletableFuture<Short> future = convertedMapItems.computeIfAbsent(id,this::processMapItem);
+    public String convertMapItem(short id) throws ExecutionException, InterruptedException {
+        CompletableFuture<String> future = convertedMapItems.computeIfAbsent(id,this::processMapItem);
         return future.get();
     }
 
     /**
      * Process the filled map by directly reading the .dat file of it inside the data folder.
-     * and writing the tag values from the CompoundTag to the JSON map file in the output/maps/maps_[sessionID] folder
-     * Each time the converter is run, a random UUID sessionID is generated, as to avoid duplicate map ID's in the converted world
+     * and writing the tag values from the CompoundTag to the JSON map file in the output/maps folder
      * @param id The short ID of the map Item
-     * @return The short ID of the map Item
+     * @return A CompletableFuture to process the map item which returns the checksum of the map file
      */
-    private CompletableFuture<Short> processMapItem(short id){
+    private CompletableFuture<String> processMapItem(short id){
         return CompletableFuture.supplyAsync(() -> {
             Path mapDatPath = dataPath.resolve("map_" + id + ".dat");
+            String checksum = null;
             if(Files.exists(mapDatPath)){
                 try {
+                    ByteSource byteSource = com.google.common.io.Files.asByteSource(mapDatPath.toFile());
+                    HashCode hashCode = byteSource.hash(Hashing.murmur3_128());
+                    checksum = hashCode.toString();
+
                     CompoundTag mapTag = (CompoundTag) NBTUtil.read(mapDatPath.toFile()).getTag();
                     CompoundTag mapDataTag = mapTag.getCompoundTag("data");
 
                     if(mapDataTag.getInt("dimension") != 0)
-                        return (short)-1;
+                        return null;
 
                     JSONObject mapItem = new JSONObject();
                     TagConv.getByteTagProperty(mapDataTag, "scale", "scale", mapItem);
@@ -6945,51 +6951,17 @@ public class MinecraftIDConverter {
 
                     TagConv.getCompoundTagProperties(mapDataTag, mapItem);
 
-                    Path mapSessionFolder = mapsPath.resolve("maps_" + mapSession);
-                    Files.createDirectories(mapSessionFolder);
-
-                    FileWriter mapFile = new FileWriter(mapSessionFolder.resolve("map_" + id + ".json" ).toFile());
+                    FileWriter mapFile = new FileWriter(mapsPath.resolve(checksum + ".json" ).toFile());
                     mapFile.write(mapItem.toJSONString());
                     mapFile.flush();
                     mapFile.close();
                 } catch (Exception ex) {
                     log.error(String.format("Error while processing map_%1$d.dat | Error: %2$s", id, ex.getMessage()));
+                    return null;
                 }
             }
-            return id;
+            return checksum;
         });
-    }
-
-    /**
-     * Write the "maps" json file in the maps_[sessionID], which stores the ID's of the converted map items, and the
-     * ID of the session when the converted was run. This approach enables, for example if you want to convert multiple 1.12.2 worlds
-     * to a single converted world, as these multiple 1.12.2 worlds may use the same map item ID's, so the newer converted world,
-     * would overwrite the old map item JSON files that use the same ID.
-     */
-    public void writeMapsSessionConfig(){
-        try {
-            JSONObject sessionItem = new JSONObject();
-            JSONArray mapsItem = new JSONArray();
-            for(Short mapId : convertedMapItems.keySet()){
-                mapsItem.add("map_" + mapId);
-            }
-
-            if(!mapsItem.isEmpty()) {
-                sessionItem.put("maps", mapsItem);
-                sessionItem.put("maps_session", mapSession);
-
-                Path mapSessionFolder = mapsPath.resolve("maps_" + mapSession);
-                if(Files.exists(mapSessionFolder)) {
-                    FileWriter mapFile = new FileWriter(mapSessionFolder.resolve("maps.json").toFile());
-                    mapFile.write(sessionItem.toJSONString());
-                    mapFile.flush();
-                    mapFile.close();
-                } else
-                    log.error("Error while writing maps session config, source world data folder was not found");
-            }
-        }catch (Exception ex){
-            log.error("Error while writing maps session config", ex);
-        }
     }
 
     /**
