@@ -137,7 +137,7 @@ public class ThreadManager {
         //Construct section.
         CompoundTag section = new CompoundTag();
 
-        section.putByte("Y", (byte) y);
+        section.putByte("Y", (byte) (y + (Main.OFFSET / 16)));
 
         //Create block_states compound tag.
         CompoundTag block_states = new CompoundTag();

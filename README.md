@@ -23,7 +23,9 @@ Entities will be converted but only the supported ones:
 Commands in the Command Block Minecart are converted as well, but only the commands `blockdata`, `entitydata`, and `execute`. Other commands are transferred over as they are. <br>The full list of supported items are: Golden Apple, Boat, Reeds, Fish, Cooked Fish, Dye, Melon, Speckled Melon, Spawn Egg, Firework Charge, Fireworks, Netherbrick, Banner (Patters as well), Mob Spawner, Writable Book, Knowledge Book, Skull (Custom skulls as well), Chorus Fruit Popped, Filled Maps and Music Disc's.
 
 #### Filled Maps
-Filled Maps (item and placed map) are supported as well, but it's only been tested on Paper, so it might not work on other Minecraft servers. The `maps` folder in the output folder can contain one or more `maps_[session]` folders, with the `session` being a random ID which is generated each time the converter is run. This approach enables the conversion of multiple worlds to a single converted world, as it avoids duplicate map item ID's.<br> This approach also avoids writing the full map item data (each pixel color for example) for each occurrence of the filled map placed in the world or in the inventory.
+Filled Maps (item and placed map) are supported as well, but it's only been tested on Paper, so it might not work on other Minecraft servers. The `maps` folder in the output folder can contain one or more JSON files, with the name of the file being the checksum of the original map item file (the `map_x.dat` file).  
+This approach enables the conversion of multiple worlds to a single converted world, as it avoids duplicate map item's.
+When the converter plugin runs, these filled maps are recreated based on the JSON files, but only if the `mapID.json` (inside the plugin folder) doesn't exist or if said file doesn't contain the map item checksum yet.
 
 ## Tested versions
 
@@ -35,8 +37,21 @@ Filled Maps (item and placed map) are supported as well, but it's only been test
 - Make sure that your offsets are in values of 16.
 - Determine the number of logical processors available in your system. You can find this information in Task Manager under the Performance tab. The program will not allow you to exceed the available amount of logical processors.
 - Ensure that the minimum Y Value is set to the minimum Y Value of your 1.18.2 world. By default, this is -64, but with the datapack, it can be up to -2032.
-- Ensure that the maximum Y Value is set to the maximum Y Value of your 1.18.2 world. By default, this is 320, but with the datapack, it can be up to 2016.
+- Ensure that the maximum Y Value is set to the maximum Y Value of your 1.18.2 world. By default, this is 320, but with the datapack, it can be up to 2032.
 - It is recommended to turn off block updates as they can break the converter. You can do this by setting the randomTickSpeed to 0 ````/gamerule randomtickspeed 0```` and by downloading [WorldGuard](https://dev.bukkit.org/projects/worldguard/files). The reason this happens is because, for example, if a chunk loads and there is a floating vine, it could break. If the converter then tries to convert that vine and it's no longer there, it'll throw an exception.
+
+### Using an offset
+When applying an offset your minY and maxY values must be altered accordingly in addition to providing the offset. Always ensure the offset is a multiple of 16 and that the maxY - minY <= 4064. See the examples for more details:
+
+Example 1:
+You want to create a 1.18.2 Minecraft world for the elevation min = 3008 and max = 4032, this does not fit in a normal Minecraft world as it has a maximum y of 2016. However, we could shift the output to be between min = 0 and max = 1024.
+To run the converter for this you have to use minY = 3008 and maxY = 4032, as these are the actual y-values of the section of the world you are converting. Using offset = -3008 you will shift the terrain down by 3008 ensuring the resulting 1.18.2 world is between y = 0 and y = 1024.
+
+Example 2:
+You have a Cubic Chunks world between minY = -1024 and maxY = 4096. The maxY is too large to fit in a 1.18.2 Minecraft world, however the total range of 4096 - -1024 = 5120 is also larger than the maximum possible for a single 1.18.2 world.
+To solve this issue we can split the world into 2 separate 1.18.2 worlds, plugins like T+- support multiple-worlds so this is a possibility. Currently, you will have to run the converter separately for each 1.18.2 world.
+- The first world we will create between y = -1024 and y = 1536, this is exactly half the y-range. To apply this to the converter we use the values minY = -1024 and maxY = 1536, we don't need to apply an offset.
+- The second world will be from y = 1536 and y = 4096, however 4096 doesn't fit, so we must offset the output 1.18.2 world. We choose the output world to be -1024 to 1536 like the previous world, for this we can run the converter with minY = 1536, maxY = 4096 and offset = -2560.
 
 ### Program Steps
 ##### __CLI portion__:
@@ -49,9 +64,9 @@ Filled Maps (item and placed map) are supported as well, but it's only been test
 
     - Replace the <path to input> with the path to your input world file folder.
     - Replace the <path to output> with the path to the folder where you want to save the converted world.
-    - Replace <minY> with the minimum Y value of the 1.18.2 world.
-    - Replace <maxY> with the maximum Y value of the 1.18.2 world.
-    - Replace <offset> with the desired offset in blocks/meters.
+    - Replace <minY> with the minimum Y value of the 1.18.2 world. NOTE: this is the minimum Y before applying the offset.
+    - Replace <maxY> with the maximum Y value of the 1.18.2 world. NOTE: this is the maximum Y before applying the offset.
+    - Replace <offset> with the desired offset in blocks/meters. NOTE: the offset is applied to the minY and maxY values.
     - Add an optional [threads] parameter to specify the number of threads to use. By default, the program will use one thread.
 5. Press the Enter key to run the command.
 6. The program will begin running and convert your world. The progress will be displayed in the CLI or terminal.
