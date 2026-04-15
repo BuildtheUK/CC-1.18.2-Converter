@@ -31,6 +31,10 @@ public class Main {
      */
 
     public static void main(String[] args) {
+        if(args == null || args.length == 0 || args[0].equals("-h") || args[0].equals("--help")) {
+            printHelp();
+            return;
+        }
 
         //Start time.
         Date date = new Date();
@@ -52,14 +56,14 @@ public class Main {
             MAX_Y_CUBE = Integer.parseInt(args[3]) / 16;
 
         } catch (NumberFormatException e) {
-            log.error("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
+            printHelp();
             return;
         }
         try {
 
             OFFSET = Integer.parseInt(args[4]);
         } catch (NumberFormatException e) {
-            log.error("java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]");
+            printHelp();
             return;
         }
 
@@ -74,6 +78,27 @@ public class Main {
                 max_threads = 1;
             }
         }
+
+        if(Integer.parseInt(args[2]) % 16 != 0 || Integer.parseInt(args[3]) % 16 != 0) {
+            log.error("The min and max Y must be in multiple of 16");
+            return;
+        }
+
+        if(MAX_Y_CUBE - MIN_Y_CUBE > 254 || MAX_Y_CUBE - MIN_Y_CUBE == 0) {
+            log.error("The target world range must lower or equal to 2064");
+            return;
+        }
+
+        if(OFFSET % 16 != 0) {
+            log.error("The offset must be in multiple of 16");
+            return;
+        }
+
+        if(MIN_Y_CUBE + (OFFSET / 16) < -127 || MAX_Y_CUBE + (OFFSET / 16) > 127) {
+            log.error("The offset world range doesn't fit into the supported vanilla range from -2032 (inclusive) to 2032 (exclusive)");
+            return;
+        }
+
         log.info("Starting converter with Min-Cube: " + MIN_Y_CUBE + " and Max-Cube: " + MAX_Y_CUBE);
         log.info("Offset is set to " + OFFSET + " blocks / meters");
         log.info("Number of threads: " + max_threads);
@@ -94,5 +119,14 @@ public class Main {
         log.info("Done!");
         log.info("Conversion completed in: " + time);
 
+    }
+
+    public static void printHelp(){
+        String help = "Usage: java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]\n" +
+                "\t<path to input> <path to output>\tThe path to the CC world and output folder\n" +
+                "\t<minY> <maxY>\tThe min and max world range to target (maxY-minY <= 2064) \n" +
+                "\t<offset>\tThe value to offset the world range into vanilla supported range [-2032,2032). Must be in multiple of 16\n" +
+                "\t[threads]\tThe number of threads to use (Optional)";
+        log.info(help);
     }
 }

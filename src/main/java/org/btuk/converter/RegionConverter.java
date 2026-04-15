@@ -457,9 +457,6 @@ public class RegionConverter extends Thread {
             for (LegacyID id : uniqueBlocks) {
                 //Store the index of this block, so we can easily reference it
                 // from the palette without having the convert it again.
-                if(id.equals((byte) -60, (byte) 4)){
-                    String w = "2";
-                }
                 paletteID.put(id, counter);
                 counter++;
                 palette.add(MinecraftIDConverter.getBlock(id));

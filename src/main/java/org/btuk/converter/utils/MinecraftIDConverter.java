@@ -772,7 +772,7 @@ public class MinecraftIDConverter {
             case 61, 62 -> {
 
                 block_entity.put("Items", new ListTag<>(CompoundTag.class));
-                block_entity.put("RecipesUsed", new ListTag<>(CompoundTag.class));
+                block_entity.put("RecipesUsed", new CompoundTag());
                 block_entity.putShort("BurnTime", (short) 0);
                 block_entity.putShort("CookTime", (short) 0);
                 block_entity.putShort("CookTimeTotal", (short) 200);
