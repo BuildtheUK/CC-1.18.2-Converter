@@ -112,7 +112,7 @@ public class Plugin extends JavaPlugin {
                 //Check if the server is empty & region folder is not empty.
                 if (Bukkit.getOnlinePlayers().isEmpty() && !isFolderEmpty(folder)) {
                     try {
-                        File file = getRandomRegion(folder);
+                        File file = getNextRegion(folder, converterQueue);
                         if (file.exists()) {
                             getLogger().info("Added file " + file.getName() + " to the queue.");
                             converterQueue.add(file);
@@ -235,9 +235,9 @@ public class Plugin extends JavaPlugin {
         }
     }
 
-    private File getRandomRegion(Path path) throws IOException, FolderEmptyException {
+    private File getNextRegion(Path path, LinkedHashSet<File> converterQueue) throws IOException, FolderEmptyException {
         try (Stream<Path> entries = Files.list(path)) {
-            Optional<Path> first = entries.findFirst();
+            Optional<Path> first = entries.filter(f -> !converterQueue.contains(f.toFile())).findFirst();
             if (first.isPresent()) {
                 return first.get().toFile();
             } else {
