@@ -2988,7 +2988,7 @@ public class MinecraftIDConverter {
                     }
 
                     case 13 -> {
-                        return "green_stain_glass";
+                        return "green_stained_glass";
                     }
 
                     case 14 -> {
