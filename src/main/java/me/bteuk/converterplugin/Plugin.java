@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class Plugin extends JavaPlugin {
@@ -106,11 +107,22 @@ public class Plugin extends JavaPlugin {
                 interval = intervalToTicks(interval_speed);
             }
 
+            AtomicInteger skip = new AtomicInteger();
+
             //Create task.
             tasks.add(Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
 
                 //Check if the server is empty & region folder is not empty.
                 if (Bukkit.getOnlinePlayers().isEmpty() && !isFolderEmpty(folder)) {
+                    if (skip.get() > 0) {
+                        skip.decrementAndGet();
+                        return;
+                    }
+                    if (converterQueue.size() >= 60) {
+                        getLogger().info("Skipping automated conversion as the queue is full (60 entries). The plugin will try again in 40 repeats.");
+                        skip.set(15);
+                        return;
+                    }
                     try {
                         File file = getNextRegion(folder, converterQueue);
                         if (file.exists()) {
@@ -118,7 +130,7 @@ public class Plugin extends JavaPlugin {
                             converterQueue.add(file);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        getComponentLogger().warn("An error occurred while trying to get the next region file, skipping this automated conversion interval.", e);
                     }
                 }
 
@@ -145,7 +157,7 @@ public class Plugin extends JavaPlugin {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 String regionFile = (((int) p.getLocation().getX() / 512) < 0 ? ((int) p.getLocation().getX() / 512) - 1 : ((int) p.getLocation().getX() / 512)) + "." +
                         (((int) p.getLocation().getZ() / 512) < 0 ? ((int) p.getLocation().getZ() / 512) - 1 : ((int) p.getLocation().getZ() / 512)) + ".json";
-                File file = new File(folder + "/" + regionFile);
+                File file = folder.resolve(regionFile).toFile();
 
                 if (file.exists()) {
                     converterQueue.add(file);
@@ -201,7 +213,8 @@ public class Plugin extends JavaPlugin {
                     }
 
                 } catch (IOException | ParseException ex) {
-                    ex.printStackTrace();
+                    getComponentLogger().warn("An error occurred while converting " + newFile.getName() + ": " + ex.getMessage(), ex);
+                    converter.setRunning(false);
                 }
 
             }
