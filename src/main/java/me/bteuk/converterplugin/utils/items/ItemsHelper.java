@@ -9,10 +9,7 @@ import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.Color;
-import org.bukkit.FireworkEffect;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.ShulkerBox;
@@ -47,6 +44,10 @@ public class ItemsHelper {
      * @throws Exception If an error happened while setting the properties of the ItemStack
      */
     public static ItemStack getItem(String id, JSONObject props) throws Exception{
+        if (Objects.equals(id, "grass") && Bukkit.getUnsafe().isSupportedApiVersion("1.20.3")) {
+            id = "short_grass";
+        }
+
         ItemStack itemStack = new ItemStack(Material.getMaterial(id.toUpperCase()));
         ItemMeta itemMeta = itemStack.getItemMeta();
         boolean skipDisplayProps = false;
