@@ -114,6 +114,9 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
                     thrownRegionKeys.add(key.getRegionKey());
                 }
                 return Optional.empty();
+            } catch (IllegalArgumentException e) {
+                log.error("Illegal argument while reading key {} at : {}. This may be caused by a corrupt section.", key, e.getMessage());
+                return Optional.empty();
             }
         });
     }
