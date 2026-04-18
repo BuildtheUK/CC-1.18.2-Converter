@@ -39,6 +39,7 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipException;
 
 import static cubicchunks.regionlib.impl.save.MinecraftSaveSection.MinecraftRegionType.MCA;
 
@@ -217,7 +218,16 @@ public class RegionConverter extends Thread {
             biomePalette.clear();
             biomePaletteID.clear();
 
-            CompoundTag columnTag = (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(column.get().array())).getTag();
+            CompoundTag columnTag;
+            try {
+                columnTag = (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(column.get().array())).getTag();
+            } catch (ZipException ex) {
+                log.error("Error reading cube in column ({},{}), skipping cube. This may be caused by a corrupt cube. {}: {}", entryX, entryZ, ex.getClass().getName(), ex.getMessage());
+                return;
+            } catch (Exception ex) {
+                log.error("Error reading column ({},{}), skipping column. {}: {}", entryX, entryZ, ex.getClass().getName(), ex.getMessage());
+                return;
+            }
             CompoundTag columnLevel = columnTag.getCompoundTag("Level");
 
             biomes = new CompoundTag();
@@ -228,9 +238,7 @@ public class RegionConverter extends Thread {
 
             //Get all cubes that could be in the range of heights.
             for (int y = Main.MIN_Y_CUBE; y < Main.MAX_Y_CUBE; y++) {
-
                 convertCube(y);
-
             }
 
             //If the whole chunk is empty, don't save it.
