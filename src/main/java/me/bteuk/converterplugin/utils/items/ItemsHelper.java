@@ -96,6 +96,7 @@ public class ItemsHelper {
                 case "REGENERATION" -> "REGEN";
                 case "STRONG_REGENERATION" -> "STRONG_REGEN";
                 case "LONG_REGENERATION" -> "LONG_REGEN";
+                case "EMPTY" -> (Bukkit.getUnsafe().isSupportedApiVersion("1.20.5") ? "WATER" : "UNCRAFTABLE");
                 default -> _potion;
             };
 
