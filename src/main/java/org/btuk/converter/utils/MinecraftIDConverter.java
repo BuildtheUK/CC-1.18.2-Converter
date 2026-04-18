@@ -6099,7 +6099,7 @@ public class MinecraftIDConverter {
             case 320 -> "cooked_porkchop";
             case 321 -> "painting";
             case 322 -> "golden_apple";
-            case 323 -> "sign";
+            case 323 -> "oak_sign";
             case 324 -> "wooden_door";
             case 325 -> "bucket";
             case 326 -> "water_bucket";
