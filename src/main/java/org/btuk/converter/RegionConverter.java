@@ -115,25 +115,18 @@ public class RegionConverter extends Thread {
     /**
      * Start the thread and run until there are no items left in the queue.
      */
+    @Override
     public void run() {
 
-        //Iterate until the queue is empty.
+        // Iterate until the queue is empty.
         try {
             while (true) {
                 file = queue.take();
 
                 if (file.equals("end")) {
                     mng.activeThreads.decrementAndGet();
-
-                    //Write entities file.
-                    //FileWriter ppFile = new FileWriter(mng.itr.output.resolve("entities") + "/" + uuid + ".json");
-                    //ppFile.write(jaEntities.toJSONString());
-                    //ppFile.flush();
-                    //ppFile.close();
                     break;
                 }
-
-
 
                 try {
                     convert();
@@ -151,19 +144,17 @@ public class RegionConverter extends Thread {
 
     /**
      * Converts a single region (512x512) to 1.18.2.
-     * The file is set globally before calling this method.
-     *
-     * @throws IOException
+     * The file is set globally before calling this method
      */
     private void convert() throws IOException {
 
-        //Create new json array to store blocks for post-processing in.
+        // Create new json array to store blocks for post-processing in.
         ja = new JSONArray();
-        //Create json array to store entities.
+        // Create json array to store entities.
         jaEntities = new JSONArray();
 
-        //Iterate through all possible chunk columns in the file and continue with any that contain data.
-        //A region2d is 512x512 which is 32*32 in terms of chunks, so 1024 individual chunks to iterate.
+        // Iterate through all possible chunk columns in the file and continue with any that contain data.
+        // A region2d is 512x512 which is 32*32 in terms of chunks, so 1024 individual chunks to iterate.
         for (int i = 0; i < 1024; i++) {
 
             convertColumn(i);
@@ -171,8 +162,11 @@ public class RegionConverter extends Thread {
         }
 
         try {
+            if (ja.isEmpty() && jaEntities.isEmpty()) {
+                return;
+            }
 
-            //Write the json array to a file.
+            // Write the json array to a file.
             FileWriter ppFile = new FileWriter(mng.itr.output.resolve("post-processing") + "/" + file.replace(".2dr", ".json"));
             JSONObject postProcObj = new JSONObject();
             postProcObj.put("block", ja);
