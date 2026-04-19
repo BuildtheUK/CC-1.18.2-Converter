@@ -27,12 +27,13 @@ import java.util.stream.Stream;
 
 public class Plugin extends JavaPlugin {
 
-    ArrayList<Integer> tasks;
+    private ArrayList<Integer> tasks = new ArrayList<>();
 
     @Override
     public void onEnable() {
 
         saveDefaultConfig();
+        tasks = new ArrayList<>();
 
         //Get data folder.
         Path folder = Path.of(getDataFolder().getAbsolutePath()).resolve("post-processing");
@@ -88,11 +89,10 @@ public class Plugin extends JavaPlugin {
         }
 
 
+        scheduleAutoRestart();
+
         Converter converter = new Converter(this, world);
         LinkedHashSet<File> converterQueue = new LinkedHashSet<>();
-
-        //List of repeating tasks, they are stored, so they can be cancelled if not needed.
-        tasks = new ArrayList<>();
 
         //If automated_conversion is enabled in config then add a region to the queue on an interval.
         //The speed is also defined in config by HIGH = 1m, NORMAL = 2.5m or LOW = 5m.
@@ -145,11 +145,7 @@ public class Plugin extends JavaPlugin {
 
                 getLogger().info("The post-processing folder has been cleared, disabling converter!");
 
-                for (int task : tasks) {
-                    Bukkit.getScheduler().cancelTask(task);
-                }
-
-                tasks.clear();
+                cancelTrackedTasks();
                 return;
             }
 
@@ -224,6 +220,8 @@ public class Plugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        cancelTrackedTasks();
+
         try {
             if(ItemMapsHelper.instance != null)
                 ItemMapsHelper.instance.writeMapsID();
@@ -231,6 +229,41 @@ public class Plugin extends JavaPlugin {
             getLogger().warning("Warning, error while writing mapID.json: " + ex.getMessage());
         }
 
+    }
+
+    private void scheduleAutoRestart() {
+        int restartHours = getConfig().getInt("auto-restart-hours", 0);
+        if (restartHours <= 0) {
+            getLogger().info("Auto-restart is disabled because auto-restart-hours is 0 or lower.");
+            return;
+        }
+
+        long intervalTicks = restartHours * 60L * 60L * 20L;
+        getLogger().info("Auto-restart check scheduled every " + restartHours + " hour(s).");
+
+        tasks.add(Bukkit.getScheduler().runTaskTimer(this, () -> {
+            if (!Bukkit.getOnlinePlayers().isEmpty()) {
+                getLogger().info("Auto-restart delayed because players are online.");
+                return;
+            }
+
+            getLogger().warning("Auto-restart triggered. Restarting server now.");
+
+            try {
+                Bukkit.spigot().restart();
+            } catch (Exception ex) {
+                getLogger().warning("Failed to call Bukkit.spigot().restart(), falling back to shutdown: " + ex.getMessage());
+                Bukkit.shutdown();
+            }
+        }, intervalTicks, intervalTicks).getTaskId());
+    }
+
+    private void cancelTrackedTasks() {
+        for (int task : tasks) {
+            Bukkit.getScheduler().cancelTask(task);
+        }
+
+        tasks.clear();
     }
 
     private boolean isFolderEmpty(Path path) {

@@ -16,3 +16,7 @@ queue-worker-seconds: 4 # How often the queue worker should run to process regio
 
 #World analyser functions.
 world_analyser: true
+
+# How often (in hours) the server should attempt an automatic restart.
+# Set to 0 (or lower) to disable. Restarts are delayed while players are online.
+auto-restart-hours: 3
