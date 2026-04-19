@@ -735,6 +735,8 @@ public class MinecraftIDConverter {
             block_entity.putString("id", "minecraft:shulker_box");
         } else if (id == 63 || id == 68) {
             block_entity.putString("id", "minecraft:sign");
+        } else if (id == 137 || id == 210 || id == 211) {
+            block_entity.putString("id", "minecraft:command_block");
         } else {
             block_entity.putString("id", getNameSpace(id, data));
         }
@@ -6336,7 +6338,7 @@ public class MinecraftIDConverter {
                         case 1 ->  "red_dye";
                         case 2 ->  "green_dye";
                         case 3 ->  "brown_dye";
-                        case 4 ->  "blu_dye";
+                        case 4 ->  "blue_dye";
                         case 5 ->  "purple_dye";
                         case 6 ->  "cyan_dye";
                         case 7 ->  "light_gray_dye";
