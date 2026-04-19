@@ -2,16 +2,17 @@ package me.bteuk.converterplugin.utils;
 
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
+import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.EulerAngle;
+import org.jetbrains.annotations.Nullable;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * General utility class for miscellaneous stuff
@@ -29,16 +30,22 @@ public class Utils {
     }
 
     /**
-     * Convert double degrees to Euler Angles
-     * @param x X rotation in degrees
-     * @param y Y rotation in degrees
-     * @param z Z rotation in degrees
-     * @return The converted XYZ rotation in degrees to Euler Angle
+     * Convert double degrees in a JSON Array to Euler Angles
+     * @param jsonArray JSON Array containing the x, y and z rotation in degrees
+     * @return The converted XYZ rotation in degrees to Euler Angle, else null
      */
-    public static EulerAngle DegreesToEulerAngles(double x, double y, double z){
-        double xRad = Math.toRadians(x);
-        double yRad = Math.toRadians(y);
-        double zRad = Math.toRadians(z);
+    @Nullable
+    public static EulerAngle DegreesToEulerAngles(JSONArray jsonArray){
+        Number xDeg = getNumericValue(jsonArray.get(0));
+        Number yDeg = getNumericValue(jsonArray.get(1));
+        Number zDeg = getNumericValue(jsonArray.get(2));
+
+        if(xDeg == null || yDeg == null || zDeg == null)
+            return null;
+
+        double xRad = Math.toRadians(xDeg.doubleValue());
+        double yRad = Math.toRadians(yDeg.doubleValue());
+        double zRad = Math.toRadians(zDeg.doubleValue());
 
         return new EulerAngle(xRad, yRad, zRad);
     }
@@ -66,10 +73,14 @@ public class Utils {
      * @param properties The basic properties to apply to the entity
      */
     public static void prepEntity(Entity entity, JSONObject properties){
-        entity.setGravity(properties.containsKey("NoGravity") ? Utils.ensureInt( properties, "NoGravity") == 1 : false);
+        Integer noGravity = Utils.readInteger(properties, "NoGravity");
+        entity.setGravity(noGravity != null && noGravity == 1);
         if(properties.containsKey("Rotation")){
             JSONArray entityRotationArray = (JSONArray) properties.get("Rotation");
-            entity.setRotation( (float) (double)entityRotationArray.get(0), (float) (double)entityRotationArray.get(1));
+            Number rotX = Utils.getNumericValue(entityRotationArray.get(0));
+            Number rotY = Utils.getNumericValue(entityRotationArray.get(1));
+            if(rotX != null && rotY != null)
+                entity.setRotation( rotX.floatValue(), rotY.floatValue());
         }
     }
 
@@ -82,8 +93,11 @@ public class Utils {
     public static List<Integer> getIntegerListFromJson(JSONObject properties, String key){
         List<Integer> list = new ArrayList<>();
         JSONArray rawArray = (JSONArray) properties.get(key);
-        for(Object item : rawArray)
-            list.add((int) (long) item);
+        for(Object item : rawArray) {
+            Number val = Utils.getNumericValue(item);
+            if(val != null)
+                list.add(val.intValue());
+        }
         return list;
     }
 
@@ -368,10 +382,32 @@ public class Utils {
     public static List<Color> getColors(JSONArray colors){
         List<Color> cols = new ArrayList<>();
         for(int c = 0; c < colors.size(); c++){
-            int col = (int) (long) colors.get(c);
-            cols.add(Color.fromRGB(col));
+            Number col = Utils.getNumericValue(colors.get(c));
+            if(col != null)
+                cols.add(Color.fromRGB(col.intValue()));
         }
         return cols;
+    }
+
+    /**
+     * Get the number from the raw value
+     * @param rawValue Raw value
+     * @return A number if the value is a number, else null
+     */
+    @Nullable
+    public static Number getNumericValue(Object rawValue) {
+        if(rawValue instanceof Integer intValue)
+            return intValue;
+        if(rawValue instanceof Long longValue)
+            return longValue;
+        if(rawValue instanceof Byte byteValue)
+            return byteValue;
+        if(rawValue instanceof Float floatValue)
+            return floatValue;
+        if(rawValue instanceof Double doubleValue)
+            return doubleValue;
+
+        return null;
     }
 
     /**
@@ -382,26 +418,119 @@ public class Utils {
      * @return The double value at the key, else default value
      */
     public static double ensureDouble(JSONObject jsonObject, String key, double defaultValue) {
-        Object rawValue = jsonObject.getOrDefault(key, null);
+        Object rawValue = readJSON(jsonObject, key);
         if(rawValue != null) {
-            if(rawValue instanceof Double doubleValue) return doubleValue;
-            else if(rawValue instanceof Integer integerValue) return integerValue.doubleValue();
-            else if(rawValue instanceof Long longValue) return longValue.doubleValue();
+            Number number = getNumericValue(rawValue);
+            if(number != null)
+                return number.doubleValue();
         }
 
         return defaultValue;
     }
 
     /**
-     * Ensure an int value gets returned from the json object
+     * Read a double value gets returned from the key in a json object, else null  if It does not exist
+     * @param jsonObject The JSON object containing the key
+     * @param key Name of the key of the double value
+     * @return The double value at the key, else null
+     */
+    @Nullable
+    public static Double readDouble(JSONObject jsonObject, String key) {
+        Object rawValue = readJSON(jsonObject ,key);
+        if(rawValue == null) return null;
+        Number number = getNumericValue(rawValue);
+        if(number != null)
+            return number.doubleValue();
+
+        return null;
+    }
+
+    /**
+     * Read an Integer value gets returned from the json object, else null if It does not exist
      * @param jsonObject The JSON object containing the key
      * @param key Name of the key of the int value
-     * @return The int value at the key
+     * @return The int value at the key, else null
      */
-    public static int ensureInt(JSONObject jsonObject, String key) {
-        Object rawValue = jsonObject.get(key);
-        if(rawValue instanceof Long longValue) return longValue.intValue();
+    @Nullable
+    public static Integer readInteger(JSONObject jsonObject, String key) {
+        Object rawValue = readJSON(jsonObject, key);
+        if(rawValue == null) return  null;
+        Number number = getNumericValue(rawValue);
+        if(number != null) return number.intValue();
 
-        return (Integer)rawValue;
+        return null;
+    }
+
+    /**
+     * Read a Long value gets returned from the json object, else null if It does not exist
+     * @param jsonObject The JSON object containing the key
+     * @param key Name of the key of the long value
+     * @return The long value at the key, else null
+     */
+    @Nullable
+    public static Long readLong(JSONObject jsonObject, String key) {
+        Object rawValue = readJSON(jsonObject, key);
+        if(rawValue == null) return  null;
+        Number number = getNumericValue(rawValue);
+        if(number != null) return number.longValue();
+
+        return null;
+    }
+
+    /**
+     * Read a Byte value gets returned from the json object, else null if It does not exist
+     * @param jsonObject The JSON object containing the key
+     * @param key Name of the key of the byte value
+     * @return The byte value at the key, else null
+     */
+    @Nullable
+    public static Byte readByte(JSONObject jsonObject, String key) {
+        Object rawValue = readJSON(jsonObject, key);
+        if(rawValue == null) return  null;
+        Number number = getNumericValue(rawValue);
+        if(number != null) return number.byteValue();
+
+        return null;
+    }
+
+    /**
+     * Read the Object at a key in the JSON Object if it exists, else return null
+     * @param jsonObject The JSON Object that should contain the key
+     * @param key The name of the key
+     * @return The Object, else null
+     */
+    @Nullable
+    public static Object readJSON(JSONObject jsonObject, String key) {
+        if(jsonObject.containsKey(key))
+            return jsonObject.get(key);
+
+        return null;
+    }
+
+    private static final Map<String, Material> ID_TO_MATERIAL = new ConcurrentHashMap<>();
+
+    /**
+     * Get the Material for the given ID, else null
+     * @param id The ID of the resource
+     * @return The Material, else null
+     */
+    @Nullable
+    public static Material getMaterial(String id) {
+        return ID_TO_MATERIAL.computeIfAbsent(id, (_id) -> {
+            if(_id == null || _id.isEmpty()) return null;
+
+            _id = (_id.contains(":")) ? _id.split(":", 2)[1] : _id;
+
+            Material mat = Material.matchMaterial(_id);
+            if(mat == null) {
+                mat = switch (_id) {
+                    case "grass" -> Material.matchMaterial("short_grass");
+                    case "tallgrass" -> Material.matchMaterial("tall_grass");
+                    default -> null;
+                };
+            }
+
+            return mat;
+        });
     }
 }

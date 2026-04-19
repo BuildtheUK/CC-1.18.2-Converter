@@ -25,6 +25,7 @@ import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
+import org.jetbrains.annotations.Nullable;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -38,17 +39,17 @@ public class ItemsHelper {
 
     /**
      * Get the ItemsStack based on the ID of the item, and It's set the properties of the ItemStack based on the JSON object properties of the item
-     * @param id The ID of the item, ex, "knowledge_book"
+     * @param id The ID of the item, ex, "minecraft:knowledge_book"
      * @param props The JSON object properties of the itme
-     * @return The created ItemStack
+     * @return The created ItemStack or null
      * @throws Exception If an error happened while setting the properties of the ItemStack
      */
+    @Nullable
     public static ItemStack getItem(String id, JSONObject props) throws Exception{
-        if (Objects.equals(id, "grass") && Bukkit.getUnsafe().isSupportedApiVersion("1.20.3")) {
-            id = "short_grass";
-        }
+        Material itemMaterial = Utils.getMaterial(id);
+        if(itemMaterial == null) return null;
 
-        ItemStack itemStack = new ItemStack(Material.getMaterial(id.toUpperCase()));
+        ItemStack itemStack = new ItemStack(itemMaterial);
         ItemMeta itemMeta = itemStack.getItemMeta();
         boolean skipDisplayProps = false;
 
@@ -80,10 +81,12 @@ public class ItemsHelper {
         //Potions
         if(props.containsKey("PotionEffects")){
             JSONObject potionEffects = (JSONObject) props.get("PotionEffects");
-            String _potion = ((String) potionEffects.get("Potion")).substring(10).toUpperCase();
+            String _potion = ((String) potionEffects.get("Potion")).toUpperCase();
+            _potion = _potion.contains(":") ? _potion.split(":", 2)[1] : _potion;
             PotionMeta potionMeta = (PotionMeta) itemMeta;
 
             String _potionEnum = switch (_potion){
+                case "AKWARD" -> "AWKWARD";
                 case "LEAPING" -> "JUMP";
                 case "STRONG_LEAPING" -> "STRONG_JUMP";
                 case "LONG_LEAPING" -> "LONG_JUMP";
@@ -109,30 +112,36 @@ public class ItemsHelper {
                 potionMeta.setBasePotionData(new PotionData(PotionType.valueOf(_potionEnum)));
 
             if(potionEffects.containsKey("custom_potion_color")){
-                int customPotionColor =  Utils.ensureInt(potionEffects, "custom_potion_color");
-                potionMeta.setColor(Color.fromRGB(customPotionColor));
+                Integer customPotionColor =  Utils.readInteger(potionEffects, "custom_potion_color");
+                if(customPotionColor != null)
+                    potionMeta.setColor(Color.fromRGB(customPotionColor));
             }
 
             if(potionEffects.containsKey("custom_potion_effects")){
                 JSONArray customPotionEffectsArray = (JSONArray) potionEffects.get("custom_potion_effects");
                 for(int c = 0; c < customPotionEffectsArray.size(); c++){
                     JSONObject customPotionEffectItem = (JSONObject) customPotionEffectsArray.get(c);
-                    int amplifier = 1;
-                    if(customPotionEffectItem.containsKey("amplifier"))
-                        amplifier = Utils.ensureInt(customPotionEffectItem, "amplifier");
-                    PotionEffect potionEffect = new PotionEffect(Objects.requireNonNull(PotionEffectType.getByKey(new NamespacedKey("minecraft", (String) customPotionEffectItem.get("id")))), Utils.ensureInt(customPotionEffectItem, "duration"), amplifier);
-                    if(customPotionEffectItem.containsKey("ambient"))
-                        potionEffect.withAmbient(Utils.ensureInt(customPotionEffectItem, "ambient") == 1);
-                    if(customPotionEffectItem.containsKey("show_particles"))
-                        potionEffect.withParticles(Utils.ensureInt(customPotionEffectItem, "show_particles") == 1);
+                    Integer amplifier = Utils.readInteger(customPotionEffectItem, "amplifier");
+                    if(amplifier == null)
+                        amplifier = 1;
+                    Integer duration = Utils.readInteger(customPotionEffectItem, "duration");
+                    if(duration != null) {
+                        PotionEffect potionEffect = new PotionEffect(Objects.requireNonNull(PotionEffectType.getByKey(new NamespacedKey("minecraft", (String) customPotionEffectItem.get("id")))), duration, amplifier);
+                        Integer ambient = Utils.readInteger(customPotionEffectItem, "ambient");
+                        Integer show_particles = Utils.readInteger(customPotionEffectItem, "show_particles");
+                        if (ambient != null)
+                            potionEffect.withAmbient(ambient == 1);
+                        if (show_particles != null)
+                            potionEffect.withParticles(show_particles == 1);
 
-                    potionMeta.addCustomEffect(potionEffect, true);
+                        potionMeta.addCustomEffect(potionEffect, true);
+                    }
                 }
             }
 
             itemStack.setItemMeta(potionMeta);
             itemMeta = itemStack.getItemMeta();
-        }else if((id.equals("writable_book") || id.equals("written_book"))){
+        }else if((id.equals("minecraft:writable_book") || id.equals("minecraft:written_book"))){
             BookMeta bookMeta = (BookMeta) itemStack.getItemMeta();
             BookMeta.BookMetaBuilder bookMetaBuilder = bookMeta.toBuilder();
 
@@ -154,7 +163,7 @@ public class ItemsHelper {
 
             itemStack.setItemMeta(bookMeta);
             itemMeta = itemStack.getItemMeta();
-        }else if(id.equals("knowledge_book") && props.containsKey("book_recipes")){
+        }else if(id.equals("minecraft:knowledge_book") && props.containsKey("book_recipes")){
             JSONArray bookRecipes = (JSONArray) props.get("book_recipes");
             KnowledgeBookMeta knowledgeBookMeta = (KnowledgeBookMeta) itemStack.getItemMeta();
             for(int c = 0; c < bookRecipes.size(); c++){
@@ -164,7 +173,7 @@ public class ItemsHelper {
 
             itemStack.setItemMeta(knowledgeBookMeta);
             itemMeta = itemStack.getItemMeta();
-        }else if(id.equals("filled_map") && props.containsKey("map_checksum")){
+        }else if(id.equals("minecraft:filled_map") && props.containsKey("map_checksum")){
             String map_checksum = (String) props.get("map_checksum");
             MapMeta mapMeta = (MapMeta) itemStack.getItemMeta();
             MapView mapView = ItemMapsHelper.instance.getMapView(map_checksum);
@@ -185,8 +194,8 @@ public class ItemsHelper {
 
             if(fireworks.containsKey("Fireworks")){
                 JSONObject _fireworks = (JSONObject) fireworks.get("Fireworks");
-                if(_fireworks.containsKey("flight")){
-                    int _flight = Utils.ensureInt(_fireworks, "flight");
+                Integer _flight = Utils.readInteger(_fireworks, "flight");
+                if(_flight != null){
                     _flight = Math.max(0, Math.min(127, _flight));
                     fireworkMeta.setPower(_flight);
                 }
@@ -208,8 +217,9 @@ public class ItemsHelper {
         //General tags
         if(props.containsKey("GeneralTags")){
             JSONObject generalTags = (JSONObject) props.get("GeneralTags");
-            if(generalTags.containsKey("unbreakable"))
-                itemMeta.setUnbreakable(Utils.ensureInt(generalTags, "unbreakable") == 1);
+            Integer unbreakable = Utils.readInteger(generalTags, "unbreakable");
+            if(unbreakable != null)
+                itemMeta.setUnbreakable(unbreakable == 1);
             if(generalTags.containsKey("CanDestroy")){
                 JSONArray canDestroy = (JSONArray) generalTags.get("CanDestroy");
                 Collection<Namespaced> canDestroyCol = new JSONArray();
@@ -232,16 +242,22 @@ public class ItemsHelper {
             boolean skipDisplayColor = false;
 
             if(id.contains("potion") && displayProps.containsKey("map_color")) {
-                PotionMeta potionMeta = (PotionMeta) itemMeta;
-                potionMeta.setColor(org.bukkit.Color.fromRGB(Utils.ensureInt(displayProps, "map_color")));
-                itemStack.setItemMeta(potionMeta);
-                itemMeta = itemStack.getItemMeta();
-            } else if(id.equals("leather_boots") || id.equals("leather_leggings") || id.equals("leather_chestplate") && displayProps.containsKey("display_color")) {
-                skipDisplayColor = true;
-                LeatherArmorMeta armorMeta = (LeatherArmorMeta) itemMeta;
-                armorMeta.setColor(org.bukkit.Color.fromRGB(Utils.ensureInt(displayProps, "display_color")));
-                itemStack.setItemMeta(armorMeta);
-                itemMeta = itemStack.getItemMeta();
+                Integer map_color = Utils.readInteger(displayProps, "map_color");
+                if(map_color != null) {
+                    PotionMeta potionMeta = (PotionMeta) itemMeta;
+                    potionMeta.setColor(org.bukkit.Color.fromRGB(map_color));
+                    itemStack.setItemMeta(potionMeta);
+                    itemMeta = itemStack.getItemMeta();
+                }
+            } else if(id.equals("minecraft:leather_boots") || id.equals("minecraft:leather_leggings") || id.equals("minecraft:leather_chestplate") && displayProps.containsKey("display_color")) {
+                Integer display_color = Utils.readInteger(displayProps, "display_color");
+                if(display_color != null) {
+                    skipDisplayColor = true;
+                    LeatherArmorMeta armorMeta = (LeatherArmorMeta) itemMeta;
+                    armorMeta.setColor(org.bukkit.Color.fromRGB(display_color));
+                    itemStack.setItemMeta(armorMeta);
+                    itemMeta = itemStack.getItemMeta();
+                }
             }
 
 
@@ -251,7 +267,10 @@ public class ItemsHelper {
                         Component.text((String) displayProps.get("display_name")) :
                         Component.translatable((String) displayProps.get("display_loc_name"));
                 if(displayProps.containsKey("display_color") && !skipDisplayColor){
-                    component = component.color(TextColor.color(Utils.ensureInt(displayProps, "display_color")));
+                    Integer display_color = Utils.readInteger(displayProps, "display_color");
+                    if(display_color != null) {
+                        component = component.color(TextColor.color(display_color));
+                    }
                 }
                 itemMeta.displayName(component.asComponent());
             }
@@ -295,9 +314,9 @@ public class ItemsHelper {
                     if(blockEntity.containsKey("loot_table")){
                         String _lootTable = (String) blockEntity.get("loot_table");
                         LootTable lootTable = InventoryHelper.getLootTable(_lootTable);
-                        if(blockEntity.containsKey("loot_table_seed")){
-                            long _lootTableSeed = (long) blockEntity.get("loot_table_seed");
-                            shulkerBox.setLootTable(lootTable, _lootTableSeed);
+                        Long loot_table_seed = Utils.readLong(blockEntity, "loot_table_seed");
+                        if(loot_table_seed != null){
+                            shulkerBox.setLootTable(lootTable, loot_table_seed);
                         }else
                             shulkerBox.setLootTable(lootTable);
                     }
@@ -332,8 +351,11 @@ public class ItemsHelper {
                 JSONArray enchantments = (JSONArray) enchantmentsTags.get("enchantments");
                 for (int c = 0; c < enchantments.size(); c++){
                     JSONObject enchantment = (JSONObject) enchantments.get(c);
-                    Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) enchantment.get("id")));
-                    itemMeta.addEnchant(_enchantment, Utils.ensureInt(enchantment, "lvl"), true);
+                    Integer lvl = Utils.readInteger(enchantment, "lvl");
+                    if(lvl != null) {
+                        Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) enchantment.get("id")));
+                        itemMeta.addEnchant(_enchantment, lvl, true);
+                    }
                 }
             }
             if(enchantmentsTags.containsKey("stored_enchantments")){
@@ -341,8 +363,11 @@ public class ItemsHelper {
                 JSONArray storedEnchantments = (JSONArray)enchantmentsTags.get("stored_enchantments");
                 for(int c = 0; c < storedEnchantments.size(); c++){
                     JSONObject storedEnchantment = (JSONObject) storedEnchantments.get(c);
-                    Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) storedEnchantment.get("id")));
-                    storageMeta.addStoredEnchant(_enchantment, Utils.ensureInt(storedEnchantment,"lvl"), true);
+                    Integer lvl = Utils.readInteger(storedEnchantment,"lvl");
+                    if(lvl != null) {
+                        Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) storedEnchantment.get("id")));
+                        storageMeta.addStoredEnchant(_enchantment, lvl, true);
+                    }
                 }
 
                 itemStack.setItemMeta(storageMeta);
@@ -376,8 +401,10 @@ public class ItemsHelper {
                     AttributeModifier.Operation _operation = AttributeModifier.Operation.valueOf((String) attributeModifierObject.get("operation"));
 
                     UUID _uuid = null;
-                    if (attributeModifierObject.containsKey("uuid_most") && attributeModifierObject.containsKey("uuid_least"))
-                        _uuid = new UUID((long) attributeModifierObject.get("uuid_most"), (long) attributeModifierObject.get("uuid_least"));
+                    Long uuid_most = Utils.readLong(attributeModifierObject, "uuid_most");
+                    Long uuid_least = Utils.readLong(attributeModifierObject, "uuid_least");
+                    if (uuid_most != null && uuid_least != null)
+                        _uuid = new UUID(uuid_most, uuid_least);
                     else
                         _uuid = UUID.randomUUID();
 
@@ -406,12 +433,14 @@ public class ItemsHelper {
      */
     public static FireworkEffect getFireworksEffect(JSONObject fireworkProps){
         FireworkEffect.Type type = FireworkEffect.Type.BALL;
-        byte _type = (byte) (long)fireworkProps.get("type");
-        switch (_type){
-            case 1 -> type = FireworkEffect.Type.BALL_LARGE;
-            case 2 -> type = FireworkEffect.Type.STAR;
-            case 3 -> type = FireworkEffect.Type.CREEPER;
-            case 4 -> type = FireworkEffect.Type.BURST;
+        Byte _type = Utils.readByte(fireworkProps, "type");
+        if(_type != null) {
+            switch (_type) {
+                case 1 -> type = FireworkEffect.Type.BALL_LARGE;
+                case 2 -> type = FireworkEffect.Type.STAR;
+                case 3 -> type = FireworkEffect.Type.CREEPER;
+                case 4 -> type = FireworkEffect.Type.BURST;
+            }
         }
 
         FireworkEffect.Builder fireworkEffectBuilder = FireworkEffect.builder();
@@ -431,10 +460,13 @@ public class ItemsHelper {
                 fireworkEffectBuilder.withFade(cols);
         }
 
-        if(fireworkProps.containsKey("flicker") && Utils.ensureInt(fireworkProps, "flicker") == 1)
+        Integer flicker = Utils.readInteger(fireworkProps, "flicker");
+        Integer trail = Utils.readInteger(fireworkProps, "trail");
+
+        if(flicker != null && flicker == 1)
             fireworkEffectBuilder.withFlicker();
 
-        if(fireworkProps.containsKey("trail") && Utils.ensureInt(fireworkProps, "trail") == 1)
+        if(trail != null && trail == 1)
             fireworkEffectBuilder.withTrail();
 
         return fireworkEffectBuilder.build();
@@ -503,17 +535,18 @@ public class ItemsHelper {
         for(Object itemRaw : items){
             JSONObject _item = (JSONObject) itemRaw;
             String _id = (String) _item.get("id");
-            if(_id.startsWith("minecraft:")) {
-                _id = _id.substring(10);
-                JSONObject _props = (JSONObject) _item.getOrDefault("Properties", new JSONObject());
-                int _slot = Utils.ensureInt(_props, "slot");
-                int _count = Utils.ensureInt(_props, "count");
+            JSONObject _props = (JSONObject) _item.getOrDefault("Properties", new JSONObject());
+            Integer _slot = Utils.readInteger(_props, "slot");
+            Integer _count = Utils.readInteger(_props, "count");
 
+            if(_slot != null && _count != null) {
                 try {
                     ItemStack itemStack = ItemsHelper.getItem(_id, _props);
-                    itemStack.setAmount(_count);
-                    inventory.setItem(_slot, itemStack);
-                }catch (Exception ex){
+                    if (itemStack != null) {
+                        itemStack.setAmount(_count);
+                        inventory.setItem(_slot, itemStack);
+                    }
+                } catch (Exception ex) {
                     throw new Exception(String.format("Exception while setting item: %1$s | Error: %2$s", _id, ex.getMessage()));
                 }
             }

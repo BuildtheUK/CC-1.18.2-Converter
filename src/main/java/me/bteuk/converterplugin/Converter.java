@@ -64,17 +64,22 @@ public class Converter {
         //Add them to the objects per chunk hash map
         for(Object object : blocksObjects){
             JSONObject jObject = (JSONObject) object;
-            int chunkX = Utils.ensureInt(jObject, "x") >> 4;
-            int chunkY = Utils.ensureInt(jObject, "y") >> 4;
-            int chunkZ = Utils.ensureInt(jObject, "z") >> 4;
-            String chunkIndex = String.format("%1$d,%2$d,%3$d", chunkX, chunkY, chunkZ);
+            Integer blockX = Utils.readInteger(jObject, "x");
+            Integer blockY = Utils.readInteger(jObject, "y");
+            Integer blockZ = Utils.readInteger(jObject, "z");
+            if(blockX != null && blockY != null && blockZ != null) {
+                int chunkX = blockX >> 4;
+                int chunkY = blockY >> 4;
+                int chunkZ = blockZ >> 4;
+                String chunkIndex = String.format("%1$d,%2$d,%3$d", chunkX, chunkY, chunkZ);
 
-            if(objectsPerChunk.containsKey(chunkIndex))
-                objectsPerChunk.get(chunkIndex).add(jObject);
-            else {
-                List<JSONObject> jObjects = new ArrayList<>();
-                jObjects.add(jObject);
-                objectsPerChunk.put(chunkIndex, jObjects);
+                if (objectsPerChunk.containsKey(chunkIndex))
+                    objectsPerChunk.get(chunkIndex).add(jObject);
+                else {
+                    List<JSONObject> jObjects = new ArrayList<>();
+                    jObjects.add(jObject);
+                    objectsPerChunk.put(chunkIndex, jObjects);
+                }
             }
         }
 
@@ -85,17 +90,22 @@ public class Converter {
 
             for(Object object : entityObjects){
                 JSONObject jObject = (JSONObject) object;
-                int chunkX = Utils.floor((double) jObject.get("x")) >> 4;
-                int chunkY = Utils.floor((double) jObject.get("y")) >> 4;
-                int chunkZ = Utils.floor((double) jObject.get("z")) >> 4;
-                String chunkIndex = String.format("%1$d,%2$d,%3$d", chunkX, chunkY, chunkZ);
+                Double locX = Utils.readDouble(jObject, "x");
+                Double locY = Utils.readDouble(jObject, "y");
+                Double locZ = Utils.readDouble(jObject, "z");
+                if(locX != null && locY != null && locZ != null) {
+                    int chunkX = Utils.floor(locX) >> 4;
+                    int chunkY = Utils.floor(locY) >> 4;
+                    int chunkZ = Utils.floor(locZ) >> 4;
+                    String chunkIndex = String.format("%1$d,%2$d,%3$d", chunkX, chunkY, chunkZ);
 
-                if(objectsPerChunk.containsKey(chunkIndex))
-                    objectsPerChunk.get(chunkIndex).add(jObject);
-                else {
-                    List<JSONObject> jObjects = new ArrayList<>();
-                    jObjects.add(jObject);
-                    objectsPerChunk.put(chunkIndex, jObjects);
+                    if (objectsPerChunk.containsKey(chunkIndex))
+                        objectsPerChunk.get(chunkIndex).add(jObject);
+                    else {
+                        List<JSONObject> jObjects = new ArrayList<>();
+                        jObjects.add(jObject);
+                        objectsPerChunk.put(chunkIndex, jObjects);
+                    }
                 }
             }
 
@@ -133,25 +143,35 @@ public class Converter {
                 for(JSONObject jObject : chunkObjects){
                     //Check if jObject is blocks
                     if(jObject.containsKey("block")){
-                        Location blockLocation = new Location(world, Utils.ensureInt(jObject, "x"), Utils.ensureInt(jObject, "y"), Utils.ensureInt(jObject, "z"));
+                        Integer blockX = Utils.readInteger(jObject, "x");
+                        Integer blockY = Utils.readInteger(jObject, "y");
+                        Integer blockZ = Utils.readInteger(jObject, "z");
+                        if(blockX != null && blockY != null && blockZ != null) {
+                            Location blockLocation = new Location(world, blockX, blockY, blockZ);
 
-                        try {
-                            setBlockData(jObject, blockLocation);
-                        } catch (Exception e) {
-                            instance.getLogger().warning(e.getMessage());
+                            try {
+                                setBlockData(jObject, blockLocation);
+                            } catch (Exception e) {
+                                instance.getLogger().warning(e.getMessage());
+                            }
                         }
                     }else {
                         //Else jObject is entity
                         String entityNamespace = (String) jObject.get("entity");
 
                         //Get the location of the entity.
-                        Location entityLocation = new Location(world, (double) jObject.get("x"), (double) jObject.get("y"), (double) jObject.get("z"));
+                        Double locX = Utils.readDouble(jObject, "x");
+                        Double locY = Utils.readDouble(jObject, "y");
+                        Double locZ = Utils.readDouble(jObject, "z");
 
-                        try{
-                            setEntity(entityNamespace,jObject, entityLocation);
-                        }
-                        catch (Exception e){
-                            instance.getLogger().warning(String.format("setEntity (%1$s) error: \n%2$s", entityNamespace, e.getMessage()));
+                        if(locX != null && locY != null && locZ != null) {
+                            Location entityLocation = new Location(world, locX, locY, locZ);
+
+                            try {
+                                setEntity(entityNamespace, jObject, entityLocation);
+                            } catch (Exception e) {
+                                instance.getLogger().warning(String.format("setEntity (%1$s) error: \n%2$s", entityNamespace, e.getMessage()));
+                            }
                         }
                     }
                 }
@@ -379,7 +399,7 @@ public class Converter {
                     if(props.containsKey("loot_table")){
                         String _lootTable = (String) props.get("loot_table");
                         LootTable lootTable = LootTables.SIMPLE_DUNGEON.getLootTable();
-                        if(_lootTable.startsWith("minecraft")) {
+                        if(_lootTable.startsWith("minecraft:")) {
                             _lootTable = _lootTable.substring(10);
                             _lootTable = _lootTable.substring(_lootTable.indexOf("/") + 1).toUpperCase();
                             try{
@@ -388,8 +408,9 @@ public class Converter {
                         }
 
 
-                        if(props.containsKey("loot_table_seed")){
-                            long _lootTableSeed = (long) props.get("loot_table_seed");
+                        Long loot_table_seed = Utils.readLong(props, "loot_table_seed");
+                        if(loot_table_seed != null){
+                            long _lootTableSeed = loot_table_seed;
                             _chest.setLootTable(lootTable, _lootTableSeed);
                         }else {
                             _chest.setLootTable(lootTable);
@@ -422,7 +443,7 @@ public class Converter {
                     if(props.containsKey("loot_table")){
                         String _lootTable = (String) props.get("loot_table");
                         lootTable = LootTables.SIMPLE_DUNGEON.getLootTable();
-                        if(_lootTable.startsWith("minecraft")) {
+                        if(_lootTable.startsWith("minecraft:")) {
                             _lootTable = _lootTable.substring(10);
                             _lootTable = _lootTable.substring(_lootTable.indexOf("/") + 1).toUpperCase();
                             try{
@@ -431,8 +452,9 @@ public class Converter {
                         }
 
 
-                        if(props.containsKey("loot_table_seed"))
-                            _lootTableSeed = (long) props.get("loot_table_seed");
+                        Long loot_table_seed = Utils.readLong(props, "loot_table_seed");
+                        if(loot_table_seed != null)
+                            _lootTableSeed = loot_table_seed;
                     }
 
                     if(props.containsKey("items"))
@@ -828,7 +850,10 @@ public class Converter {
                         throw new BlockNotFoundException("Found " + block.getType().name() + " expected " + object.get("block") + " at " + l.getX() + "," + l.getY() + "," + l.getZ());
                     }
 
-                    setRotation(rot, (byte) (long) properties.get("rotation"));
+
+                    Byte rotation = Utils.readByte(properties, "rotation");
+                    if(rotation != null)
+                        setRotation(rot, rotation);
 
                     block.setBlockData(rot, false);
 
@@ -917,7 +942,9 @@ public class Converter {
                 }
 
                 //Set the note from config.
-                noteBlock.setNote(new Note(Utils.ensureInt(properties, "note")));
+                Integer note = Utils.readInteger(properties, "note");
+                if(note != null)
+                    noteBlock.setNote(new Note(note));
 
                 //Set the instrument.
                 //Get the block below and check which instrument it should be.
@@ -1840,43 +1867,52 @@ public class Converter {
                     List<Integer> beamTarget = Utils.getIntegerListFromJson(objectProps, "beam_target");
                     enderCrystal.setBeamTarget(new Location(location.getWorld(), beamTarget.get(0), beamTarget.get(1), beamTarget.get(2)));
                 }
-                enderCrystal.setShowingBottom((objectProps.containsKey("show_button") ? Utils.ensureInt(objectProps, "show_button") == 1 : false));
+                Integer show_button = Utils.readInteger(objectProps, "show_button");
+                enderCrystal.setShowingBottom(show_button != null && show_button == 1);
             }
             case "minecraft:painting" -> {
                 JSONArray tilePos = (JSONArray) objectProps.get("tile_pos");
-                location = new Location(location.getWorld(), (double) (long) tilePos.get(0), (double) (long) tilePos.get(1), (double) (long) tilePos.get(2));
+                Number tileX = Utils.getNumericValue(tilePos.get(0));
+                Number tileY = Utils.getNumericValue(tilePos.get(1));
+                Number tileZ = Utils.getNumericValue(tilePos.get(2));
 
-                Painting painting = (Painting) world.spawnEntity(location, EntityType.PAINTING);
-                Utils.prepEntity(painting, objectProps);
-                Art motive = Art.getByName((String) objectProps.get("motive"));
-                painting.setArt(motive);
-                if(objectProps.containsKey("facing")){
-                    painting.setFacingDirection(BlockFace.valueOf((String) objectProps.get("facing")));
+                if(tileX != null && tileY != null && tileZ != null) {
+                    location = new Location(location.getWorld(), tileX.doubleValue(), tileY.doubleValue(), tileZ.doubleValue());
+
+                    Painting painting = (Painting) world.spawnEntity(location, EntityType.PAINTING);
+                    Utils.prepEntity(painting, objectProps);
+                    Art motive = Art.getByName((String) objectProps.get("motive"));
+                    painting.setArt(motive);
+                    if (objectProps.containsKey("facing")) {
+                        painting.setFacingDirection(BlockFace.valueOf((String) objectProps.get("facing")));
+                    }
                 }
             }
             case "minecraft:item_frame" -> {
                 ItemFrame itemFrame = (ItemFrame) world.spawnEntity(location, EntityType.ITEM_FRAME);
                 Utils.prepEntity(itemFrame, objectProps);
-                if(objectProps.containsKey("fixed"))
-                    itemFrame.setFixed(Utils.ensureInt(objectProps, "fixed")==1);
-                if(objectProps.containsKey("invisible"))
-                    itemFrame.setVisible(Utils.ensureInt(objectProps, "invisible")==0);
+                Integer fixed = Utils.readInteger(objectProps, "fixed");
+                Integer invisible = Utils.readInteger(objectProps, "invisible");
+                if(fixed != null)
+                    itemFrame.setFixed(fixed==1);
+                if(invisible != null)
+                    itemFrame.setVisible(invisible==0);
                 if(objectProps.containsKey("item")){
                     JSONObject item = (JSONObject) objectProps.get("item");
                     JSONObject itemProps = (JSONObject) item.getOrDefault("Properties", new JSONObject());
                     String itemID = (String) item.get("id");
-                    if(itemID.startsWith("minecraft:")) {
-                        itemID = itemID.substring(10);
-                        ItemStack _item = ItemsHelper.getItem(itemID, itemProps);
+                    ItemStack _item = ItemsHelper.getItem(itemID, itemProps);
+                    if(_item != null)
                         itemFrame.setItem(_item);
-                    }
+
                 }
                 if(objectProps.containsKey("item_rotation")){
                     itemFrame.setRotation(Rotation.valueOf((String) objectProps.get("item_rotation")));
                 }
                 if(objectProps.containsKey("item_drop_chance")){
-                    Double itemDropChance = (double)objectProps.get("item_drop_chance");
-                    itemFrame.setItemDropChance(itemDropChance.floatValue());
+                    Double itemDropChance = Utils.readDouble(objectProps, "item_drop_chance");
+                    if(itemDropChance != null)
+                        itemFrame.setItemDropChance(itemDropChance.floatValue());
                 }
 
             }

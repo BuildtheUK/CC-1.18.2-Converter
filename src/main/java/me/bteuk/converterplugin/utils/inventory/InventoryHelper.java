@@ -1,5 +1,6 @@
 package me.bteuk.converterplugin.utils.inventory;
 
+import me.bteuk.converterplugin.utils.Utils;
 import me.bteuk.converterplugin.utils.items.ItemsHelper;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -36,11 +37,13 @@ public class InventoryHelper {
         if(props.containsKey("loot_table")){
             String _lootTable = (String) props.get("loot_table");
             LootTable lootTable = getLootTable(_lootTable);
-            if(_lootTable != null)
-                if(props.containsKey("loot_table_seed"))
-                    lootableEntityInventory.setLootTable(lootTable, (long) props.get("loot_table_seed"));
+            if(lootTable != null) {
+                Long loot_table_seed = Utils.readLong(props, "loot_table_seed");
+                if (loot_table_seed != null)
+                    lootableEntityInventory.setLootTable(lootTable, loot_table_seed);
                 else
                     lootableEntityInventory.setLootTable(lootTable);
+            }
         }
     }
 

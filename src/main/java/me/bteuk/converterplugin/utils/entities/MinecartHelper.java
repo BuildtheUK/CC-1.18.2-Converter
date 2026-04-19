@@ -20,20 +20,22 @@ public class MinecartHelper {
      */
     public static void setCommonMinecartProps(Minecart minecart, JSONObject props){
         Utils.prepEntity(minecart, props);
+        Integer display_tile = Utils.readInteger(props, "display_tile");
+        if(display_tile != null && display_tile == 1){
+            Material displayTileMaterial = Utils.getMaterial((String)props.get("display_tile_block"));
+            if(displayTileMaterial != null) {
+                if (props.containsKey("display_tile_block_states")) {
+                    JSONObject displayBlockStates = (JSONObject) props.get("display_tile_block_states");
+                    String _blockData = displayTileMaterial.getKey() + "[" + Utils.flattenBlockState(displayBlockStates) + "]";
+                    BlockData displayBlockData = displayTileMaterial.createBlockData(_blockData);
+                    minecart.setDisplayBlockData(displayBlockData);
+                } else
+                    minecart.setDisplayBlockData(displayTileMaterial.createBlockData());
+            }
 
-        if(props.containsKey("display_tile") && Utils.ensureInt(props, "display_tile") == 1){
-            String displayTileBlock = ((String)props.get("display_tile_block")).substring(10);
-            Material displayTileMaterial = Material.getMaterial(displayTileBlock.toUpperCase());
-            if(props.containsKey("display_tile_block_states")){
-                JSONObject displayBlockStates = (JSONObject) props.get("display_tile_block_states");
-                String _blockData = "minecraft:" + displayTileBlock + "[" + Utils.flattenBlockState(displayBlockStates) + "]";
-                BlockData displayBlockData = displayTileMaterial.createBlockData(_blockData);
-                minecart.setDisplayBlockData(displayBlockData);
-            }else
-                minecart.setDisplayBlockData(displayTileMaterial.createBlockData());
-
-            if(props.containsKey("display_tile_offset"))
-                minecart.setDisplayBlockOffset((int)props.get("display_tile_offset"));
+            Integer display_tile_offset = Utils.readInteger(props, "display_tile_offset");
+            if(display_tile_offset != null)
+                minecart.setDisplayBlockOffset(display_tile_offset);
         }
     }
 
@@ -57,8 +59,9 @@ public class MinecartHelper {
     public static void prepHopperMinecart(HopperMinecart hopperMinecart, JSONObject props) throws Exception {
         InventoryHelper.prepInventoryChest(hopperMinecart, props);
         InventoryHelper.prepLootableChest(hopperMinecart, props);
-        if(props.containsKey("enabled"))
-            hopperMinecart.setEnabled(Utils.ensureInt(props, "enabled") == 1);
+        Integer enabled = Utils.readInteger(props, "enabled");
+        if(enabled != null)
+            hopperMinecart.setEnabled(enabled == 1);
     }
 
     /**
@@ -67,12 +70,15 @@ public class MinecartHelper {
      * @param props JSON object containing the properties of the minecart
      */
     public static void prepFurnaceMinecart(PoweredMinecart furnaceMinecart, JSONObject props){
-        if(props.containsKey("fuel"))
-            furnaceMinecart.setFuel(Utils.ensureInt(props, "fuel"));
-        if(props.containsKey("push_x"))
-            furnaceMinecart.setPushX((double) props.get("push_x"));
-        if(props.containsKey("push_z"))
-            furnaceMinecart.setPushZ((double) props.get("push_z"));
+        Integer fuel = Utils.readInteger(props, "fuel");
+        Double push_x = Utils.readDouble(props, "push_x");
+        Double push_z = Utils.readDouble(props, "push_z");
+        if(fuel != null)
+            furnaceMinecart.setFuel(fuel);
+        if(push_x != null)
+            furnaceMinecart.setPushX(push_x);
+        if(push_z != null)
+            furnaceMinecart.setPushZ(push_z);
     }
 
     /**
@@ -90,7 +96,7 @@ public class MinecartHelper {
      */
     public static void prepExplosiveMinecart(ExplosiveMinecart explosiveMinecart, JSONObject props){
         if(props.containsKey("tnt_fuse")){
-            //ToDo: Once updated to 1.20.4+ Use explosiveMinecart.setFuseTicks((int)props.get("tnt_fuse"))
+            //ToDo: Once updated to 1.20.4+ Use explosiveMinecart.setFuseTicks(Utils.readInteger(props, "tnt_fuse"))
         }
     }
 }

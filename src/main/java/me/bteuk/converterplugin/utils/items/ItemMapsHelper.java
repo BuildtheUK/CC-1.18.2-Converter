@@ -98,26 +98,37 @@ public class ItemMapsHelper {
                 MapView mapView = Bukkit.createMap(world);
                 int new_id = mapView.getId();
 
-                byte scale = (byte) (long) mapItem.get("scale");
-                switch (scale) {
-                    case 0 -> mapView.setScale(MapView.Scale.CLOSEST);
-                    case 1 -> mapView.setScale(MapView.Scale.CLOSE);
-                    case 2 -> mapView.setScale(MapView.Scale.NORMAL);
-                    case 3 -> mapView.setScale(MapView.Scale.FAR);
-                    case 4 -> mapView.setScale(MapView.Scale.FARTHEST);
+                Byte scale = Utils.readByte(mapItem, "scale");
+                if(scale != null) {
+                    switch (scale) {
+                        case 0 -> mapView.setScale(MapView.Scale.CLOSEST);
+                        case 1 -> mapView.setScale(MapView.Scale.CLOSE);
+                        case 2 -> mapView.setScale(MapView.Scale.NORMAL);
+                        case 3 -> mapView.setScale(MapView.Scale.FAR);
+                        case 4 -> mapView.setScale(MapView.Scale.FARTHEST);
+                    }
                 }
 
-                if (mapItem.containsKey("unlimited_tracking"))
-                    mapView.setUnlimitedTracking(Utils.ensureInt(mapItem, "unlimited_tracking") == 1);
+                Integer unlimited_tracking = Utils.readInteger(mapItem, "unlimited_tracking");
+                if (unlimited_tracking != null)
+                    mapView.setUnlimitedTracking(unlimited_tracking== 1);
 
-                mapView.setCenterX(Utils.ensureInt(mapItem, "x_center"));
-                mapView.setCenterZ(Utils.ensureInt(mapItem, "z_center"));
+                Integer x_center = Utils.readInteger(mapItem, "x_center");
+                Integer z_center = Utils.readInteger(mapItem, "z_center");
+                if(x_center != null && z_center != null) {
+                    mapView.setCenterX(x_center);
+                    mapView.setCenterZ(z_center);
+                }
 
                 try {
                     JSONArray _colors = (JSONArray) mapItem.get("colors");
                     byte[] cols = new byte[_colors.size()];
-                    for (int c = 0; c < _colors.size(); c++)
-                        cols[c] = (byte) (long) _colors.get(c);
+                    Number col;
+                    for (int c = 0; c < _colors.size(); c++) {
+                        col = Utils.getNumericValue(_colors.get(c));
+                        if(col != null)
+                            cols[c] = col.byteValue();
+                    }
 
                     Field worldMapField = mapView.getClass().getDeclaredField("worldMap");
                     worldMapField.setAccessible(true);
@@ -227,8 +238,8 @@ public class ItemMapsHelper {
      * @return An existing MapView with the mapped new ID, or a brand new MapView
      */
     public MapView getMapView(String map_checksum) {
-        if(mapsID.containsKey(map_checksum)) {
-            int new_id = Utils.ensureInt(mapsID, map_checksum);
+        Integer new_id = Utils.readInteger(mapsID, map_checksum);
+        if(new_id != null) {
             return Bukkit.getMap(new_id);
         }
 

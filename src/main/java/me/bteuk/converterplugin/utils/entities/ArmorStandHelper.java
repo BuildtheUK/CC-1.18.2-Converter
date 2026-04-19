@@ -1,23 +1,13 @@
 package me.bteuk.converterplugin.utils.entities;
 
-import me.bteuk.converterplugin.Converter;
 import me.bteuk.converterplugin.utils.Utils;
 import me.bteuk.converterplugin.utils.items.ItemsHelper;
-import net.kyori.adventure.text.Component;
-import org.bukkit.Material;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.LeatherArmorMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.util.EulerAngle;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.ParseException;
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.util.UUID;
 
 /**
  * Helper class to set Armor Stands
@@ -33,49 +23,58 @@ public class ArmorStandHelper {
      */
     public static void propArmorStand(ArmorStand armorStand, JSONObject properties) throws Exception {
         Utils.prepEntity(armorStand, properties);
-        armorStand.setArms(Utils.ensureInt(properties, "ShowArms") == 1);
-        armorStand.setInvisible(Utils.ensureInt(properties, "Invisible") == 1);
-        armorStand.setSmall(Utils.ensureInt(properties, "Small") == 1);
-        armorStand.setBasePlate(Utils.ensureInt(properties, "NoBasePlate") == 0);
+        Integer showArms = Utils.readInteger(properties, "ShowArms");
+        Integer invisible = Utils.readInteger(properties, "Invisible");
+        Integer small = Utils.readInteger(properties, "Small");
+        Integer noBasePlate = Utils.readInteger(properties, "NoBasePlate");
+        armorStand.setArms(showArms != null && showArms == 1);
+        armorStand.setInvisible(invisible != null && invisible == 1);
+        armorStand.setSmall(small != null && small == 1);
+        armorStand.setBasePlate(noBasePlate == null || noBasePlate == 0);
 
         if(properties.containsKey("Pose")) {
             JSONObject poseObject = (JSONObject) properties.get("Pose");
 
             if (poseObject.containsKey("Body")) {
                 JSONArray bodyPoseArray = (JSONArray) poseObject.get("Body");
-                EulerAngle bodyPose = Utils.DegreesToEulerAngles((double) bodyPoseArray.get(0), (double) bodyPoseArray.get(1), (double) bodyPoseArray.get(2));
-
-                armorStand.setBodyPose(bodyPose);
+                EulerAngle bodyPose = Utils.DegreesToEulerAngles(bodyPoseArray);
+                if(bodyPose != null)
+                    armorStand.setBodyPose(bodyPose);
             }
 
             if (poseObject.containsKey("Head")) {
                 JSONArray headPoseArray = (JSONArray) poseObject.get("Head");
-                EulerAngle headPose = Utils.DegreesToEulerAngles((double) headPoseArray.get(0), (double) headPoseArray.get(1), (double) headPoseArray.get(2));
-                armorStand.setHeadPose(headPose);
+                EulerAngle headPose = Utils.DegreesToEulerAngles(headPoseArray);
+                if(headPose != null)
+                    armorStand.setHeadPose(headPose);
             }
 
             if (poseObject.containsKey("LeftArm")) {
                 JSONArray leftArmPoseArray = (JSONArray) poseObject.get("LeftArm");
-                EulerAngle leftArmPose = Utils.DegreesToEulerAngles((double) leftArmPoseArray.get(0), (double) leftArmPoseArray.get(1), (double) leftArmPoseArray.get(2));
-                armorStand.setLeftArmPose(leftArmPose);
+                EulerAngle leftArmPose = Utils.DegreesToEulerAngles(leftArmPoseArray);
+                if(leftArmPose != null)
+                    armorStand.setLeftArmPose(leftArmPose);
             }
 
             if (poseObject.containsKey("RightArm")) {
                 JSONArray rightArmPoseArray = (JSONArray) poseObject.get("RightArm");
-                EulerAngle rightArmPose = Utils.DegreesToEulerAngles((double) rightArmPoseArray.get(0), (double) rightArmPoseArray.get(1), (double) rightArmPoseArray.get(2));
-                armorStand.setRightArmPose(rightArmPose);
+                EulerAngle rightArmPose = Utils.DegreesToEulerAngles(rightArmPoseArray);
+                if(rightArmPose != null)
+                    armorStand.setRightArmPose(rightArmPose);
             }
 
             if (poseObject.containsKey("LeftLeg")) {
                 JSONArray leftLegPoseArray = (JSONArray) poseObject.get("LeftLeg");
-                EulerAngle leftLegPose = Utils.DegreesToEulerAngles((double) leftLegPoseArray.get(0), (double) leftLegPoseArray.get(1), (double) leftLegPoseArray.get(2));
-                armorStand.setLeftLegPose(leftLegPose);
+                EulerAngle leftLegPose = Utils.DegreesToEulerAngles(leftLegPoseArray);
+                if(leftLegPose != null)
+                    armorStand.setLeftLegPose(leftLegPose);
             }
 
             if (poseObject.containsKey("RightLeg")) {
                 JSONArray rightLegPoseArray = (JSONArray) poseObject.get("RightLeg");
-                EulerAngle rightLegPose = Utils.DegreesToEulerAngles((double) rightLegPoseArray.get(0), (double) rightLegPoseArray.get(1), (double) rightLegPoseArray.get(2));
-                armorStand.setRightLegPose(rightLegPose);
+                EulerAngle rightLegPose = Utils.DegreesToEulerAngles(rightLegPoseArray);
+                if(rightLegPose != null)
+                    armorStand.setRightLegPose(rightLegPose);
             }
         }
 
@@ -86,7 +85,7 @@ public class ArmorStandHelper {
             if (armorItemObject == null || armorItemObject.isEmpty())
                 continue;
 
-            String armorItemID = ((String) armorItemObject.get("id")).substring(10);
+            String armorItemID = ((String) armorItemObject.get("id"));
             JSONObject armorItemProps = (JSONObject) armorItemObject.getOrDefault("Properties", new JSONObject());
 
             ItemStack armorItem = ItemsHelper.getItem(armorItemID, armorItemProps);
@@ -100,11 +99,13 @@ public class ArmorStandHelper {
                 }
             }*/
 
-            switch (c){
-                case 0 -> armorEquipment.setBoots(armorItem);
-                case 1 -> armorEquipment.setLeggings(armorItem);
-                case 2 -> armorEquipment.setChestplate(armorItem);
-                case 3 -> armorEquipment.setHelmet(armorItem);
+            if(armorItem != null) {
+                switch (c) {
+                    case 0 -> armorEquipment.setBoots(armorItem);
+                    case 1 -> armorEquipment.setLeggings(armorItem);
+                    case 2 -> armorEquipment.setChestplate(armorItem);
+                    case 3 -> armorEquipment.setHelmet(armorItem);
+                }
             }
         }
 
@@ -114,14 +115,14 @@ public class ArmorStandHelper {
             if(handItemID.isEmpty())
                 continue;
 
-            handItemID = handItemID.substring(10);
-
             ItemStack handItem = ItemsHelper.getItem(handItemID, new JSONObject());
 
-            if (c == 0)
-                armorEquipment.setItemInMainHand(handItem);
-            else
-                armorEquipment.setItemInOffHand(handItem);
+            if(handItem != null) {
+                if (c == 0)
+                    armorEquipment.setItemInMainHand(handItem);
+                else
+                    armorEquipment.setItemInOffHand(handItem);
+            }
 
         }
     }
