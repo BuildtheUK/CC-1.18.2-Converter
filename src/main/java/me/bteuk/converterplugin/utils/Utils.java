@@ -1,5 +1,10 @@
 package me.bteuk.converterplugin.utils;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
@@ -73,15 +78,24 @@ public class Utils {
      * @param properties The basic properties to apply to the entity
      */
     public static void prepEntity(Entity entity, JSONObject properties){
-        Integer noGravity = Utils.readInteger(properties, "NoGravity");
-        entity.setGravity(noGravity != null && noGravity == 1);
+        Integer noGravity = readInteger(properties, "NoGravity");
+        entity.setGravity(noGravity == null || noGravity != 1);
         if(properties.containsKey("Rotation")){
             JSONArray entityRotationArray = (JSONArray) properties.get("Rotation");
-            Number rotX = Utils.getNumericValue(entityRotationArray.get(0));
-            Number rotY = Utils.getNumericValue(entityRotationArray.get(1));
+            Number rotX = getNumericValue(entityRotationArray.get(0));
+            Number rotY = getNumericValue(entityRotationArray.get(1));
             if(rotX != null && rotY != null)
                 entity.setRotation( rotX.floatValue(), rotY.floatValue());
         }
+
+        if(properties.containsKey("CustomName")) {
+            Component customNameComponent = getTextComponent((String) properties.get("CustomName"));
+            entity.customName(customNameComponent);
+        }
+
+        Integer customNameVisible = readInteger(properties, "CustomNameVisible");
+        if(customNameVisible != null)
+            entity.setCustomNameVisible(customNameVisible == 1);
     }
 
     /**
@@ -94,7 +108,7 @@ public class Utils {
         List<Integer> list = new ArrayList<>();
         JSONArray rawArray = (JSONArray) properties.get(key);
         for(Object item : rawArray) {
-            Number val = Utils.getNumericValue(item);
+            Number val = getNumericValue(item);
             if(val != null)
                 list.add(val.intValue());
         }
@@ -382,7 +396,7 @@ public class Utils {
     public static List<Color> getColors(JSONArray colors){
         List<Color> cols = new ArrayList<>();
         for(int c = 0; c < colors.size(); c++){
-            Number col = Utils.getNumericValue(colors.get(c));
+            Number col = getNumericValue(colors.get(c));
             if(col != null)
                 cols.add(Color.fromRGB(col.intValue()));
         }
@@ -532,5 +546,52 @@ public class Utils {
 
             return mat;
         });
+    }
+
+    /**
+     * Get the text component from the string, ex. if It's a regular string, or JSON encoded test,
+     * while also handling any legacy code (§)
+     * @param rawString The raw string to display
+     * @return The component to display
+     */
+    public static Component getTextComponent(String rawString) {
+        Component component;
+        if(rawString.startsWith("{") && rawString.endsWith("}") && rawString.contains(":")) {
+            boolean hasLegacyCodes = rawString.contains("§");
+            try {
+                component = GsonComponentSerializer.gson().deserialize(rawString);
+                if(hasLegacyCodes)
+                    component = fixLegacyCodesInComponent(component);
+            }catch (Exception ex) {
+                component = Component.text(rawString);
+            }
+        }else {
+            component = Component.text(rawString);
+        }
+
+        return component;
+    }
+
+    /**
+     * Fix the component and It's children content from legacy code (§)
+     * @param component The component to fix
+     * @return The fixed component and It's fixed children, if it has any
+     */
+    public static Component fixLegacyCodesInComponent(Component component) {
+        List<Component> fixedChildren = component.children().stream().map(Utils::fixLegacyCodesInComponent).toList();
+        Component _component = component;
+
+        if(component instanceof TextComponent textComponent) {
+            TextComponent fixedTextComponent = LegacyComponentSerializer.legacySection().deserialize(textComponent.content());
+            _component = fixedTextComponent
+                    .style(textComponent.style().merge(fixedTextComponent.style(), Style.Merge.Strategy.ALWAYS))
+                    .clickEvent(textComponent.clickEvent())
+                    .hoverEvent(textComponent.hoverEvent())
+                    .insertion(textComponent.insertion());
+        }
+
+        List<Component> children = new ArrayList<>(_component.children());
+        children.addAll(fixedChildren);
+        return _component.children(children);
     }
 }

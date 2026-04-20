@@ -1901,9 +1901,13 @@ public class Converter {
                     JSONObject item = (JSONObject) objectProps.get("item");
                     JSONObject itemProps = (JSONObject) item.getOrDefault("Properties", new JSONObject());
                     String itemID = (String) item.get("id");
-                    ItemStack _item = ItemsHelper.getItem(itemID, itemProps);
-                    if(_item != null)
-                        itemFrame.setItem(_item);
+                    try {
+                        ItemStack _item = ItemsHelper.getItem(itemID, itemProps);
+                        if (_item != null)
+                            itemFrame.setItem(_item);
+                    }catch (Exception ex) {
+                        instance.getLogger().warning(String.format("Exception while setting item frame for the item: %1$s | Error: %2$s", itemID, ex.getMessage()));
+                    }
 
                 }
                 if(objectProps.containsKey("item_rotation")){

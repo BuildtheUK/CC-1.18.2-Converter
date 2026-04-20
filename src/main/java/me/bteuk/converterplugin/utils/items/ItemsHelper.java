@@ -4,11 +4,7 @@ import com.destroystokyo.paper.Namespaced;
 import me.bteuk.converterplugin.utils.Utils;
 import me.bteuk.converterplugin.utils.inventory.InventoryHelper;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -57,7 +53,12 @@ public class ItemsHelper {
         if(props.containsKey("SkullOwner")){
             JSONObject skullOwnerObject = (JSONObject) props.get("SkullOwner");
 
-            if (skullOwnerObject.containsKey("profileId")) {
+            if (skullOwnerObject.containsKey("texture")) {
+                String skullId = (String)skullOwnerObject.getOrDefault("id", "");
+                String skullTexture = (String) skullOwnerObject.get("texture");
+                itemStack = ItemSkullHelper.fromBase64(skullId , skullTexture);
+                itemMeta = itemStack.getItemMeta();
+            } else if (skullOwnerObject.containsKey("profileId")) {
                 String rawUUID = (String) skullOwnerObject.get("profileId");
                 BigInteger mostBits = new BigInteger(rawUUID.substring(0, 16), 16);
                 BigInteger leastBits = new BigInteger(rawUUID.substring(16, 32), 16);
@@ -67,11 +68,6 @@ public class ItemsHelper {
             } else if (skullOwnerObject.containsKey("profileName")) {
                 String profileName = (String) skullOwnerObject.get("profileName");
                 itemStack = ItemSkullHelper.fromUsername(profileName);
-                itemMeta = itemStack.getItemMeta();
-            } else if (skullOwnerObject.containsKey("texture")) {
-                String skullId = (String)skullOwnerObject.getOrDefault("id", "");
-                String skullTexture = (String) skullOwnerObject.get("texture");
-                itemStack = ItemSkullHelper.fromBase64(skullId , skullTexture);
                 itemMeta = itemStack.getItemMeta();
             }
 
@@ -100,7 +96,7 @@ public class ItemsHelper {
                 case "REGENERATION" -> "REGEN";
                 case "STRONG_REGENERATION" -> "STRONG_REGEN";
                 case "LONG_REGENERATION" -> "LONG_REGEN";
-                case "EMPTY" -> (Bukkit.getUnsafe().isSupportedApiVersion("1.20.5") ? "WATER" : "UNCRAFTABLE");
+                case "EMPTY" -> HAS_UNCRAFTABLE_POTION_TYPE ? "UNCRAFTABLE" : "WATER";
                 default -> _potion;
             };
 
@@ -426,6 +422,19 @@ public class ItemsHelper {
         return itemStack;
     }
 
+    private static final boolean HAS_UNCRAFTABLE_POTION_TYPE;
+
+    static {
+        boolean hasUncraftable;
+        try {
+            PotionType.valueOf("UNCRAFTABLE");
+            hasUncraftable = true;
+        }catch (Exception ex) {
+            hasUncraftable = false;
+        }
+        HAS_UNCRAFTABLE_POTION_TYPE = hasUncraftable;
+    }
+
     /**
      * Get the FireWorkEffect based on the JSON object properties
      * @param fireworkProps The JSON object properties
@@ -482,47 +491,11 @@ public class ItemsHelper {
         List<Component> pages = new ArrayList<>();
         for(int p = 0; p < rawPages.size(); p++) {
             String rawPage = (String) rawPages.get(p);
-            Component page;
-            if(rawPage.startsWith("{") && rawPage.endsWith("}") && rawPage.contains(":")) {
-                boolean hasLegacyCodes = rawPage.contains("§");
-                try {
-                    page = GsonComponentSerializer.gson().deserialize(rawPage);
-                    if(hasLegacyCodes)
-                        page = fixLegacyCodesInComponent(page);
-                }catch (Exception ex) {
-                    page = Component.text(rawPage);
-                }
-            }else {
-                page = Component.text(rawPage);
-            }
-
+            Component page = Utils.getTextComponent(rawPage);
             pages.add(page);
         }
 
         return pages;
-    }
-
-    /**
-     * Fix the component and It's children content from legacy code (§)
-     * @param component The component to fix
-     * @return The fixed component and It's fixed children, if it has any
-     */
-    public static Component fixLegacyCodesInComponent(Component component) {
-        List<Component> fixedChildren = component.children().stream().map(ItemsHelper::fixLegacyCodesInComponent).toList();
-        Component _component = component;
-
-        if(component instanceof TextComponent textComponent) {
-            TextComponent fixedTextComponent = LegacyComponentSerializer.legacySection().deserialize(textComponent.content());
-            _component = fixedTextComponent
-                    .style(textComponent.style().merge(fixedTextComponent.style(), Style.Merge.Strategy.ALWAYS))
-                    .clickEvent(textComponent.clickEvent())
-                    .hoverEvent(textComponent.hoverEvent())
-                    .insertion(textComponent.insertion());
-        }
-
-        List<Component> children = new ArrayList<>(_component.children());
-        children.addAll(fixedChildren);
-        return _component.children(children);
     }
 
     /**
