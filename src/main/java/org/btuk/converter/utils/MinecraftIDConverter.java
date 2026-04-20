@@ -11,7 +11,6 @@ import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -735,7 +734,7 @@ public class MinecraftIDConverter {
             block_entity.putString("id", "minecraft:shulker_box");
         } else if (id == 63 || id == 68) {
             block_entity.putString("id", "minecraft:sign");
-        } else if (id == 137 || id == 210 || id == 211) {
+        } else if (id == (byte) 137 || id == (byte) 210 || id == (byte) 211) {
             block_entity.putString("id", "minecraft:command_block");
         } else {
             block_entity.putString("id", getNameSpace(id, data));
@@ -6526,7 +6525,7 @@ public class MinecraftIDConverter {
                         case 8267, 16459 -> "leaping";
                         case 8269, 16461 -> "long_water_breathing";
                         case 8270, 16462 -> "long_invisibility";
-                        default -> "akward";
+                        default -> "awkward";
                     };
 
                     if(damage >= 16385) {
@@ -7095,7 +7094,6 @@ public class MinecraftIDConverter {
                 newArguments.add(arguments[1]);
                 newArguments.add(arguments[2]);
 
-                String blockSelector = "";
                 HashMap<String, String> states = new HashMap<>();
                 byte data = 0;
                 String oldBlockHandling = "";
@@ -7119,7 +7117,7 @@ public class MinecraftIDConverter {
                     }
                 }
 
-                blockSelector = getBlockSelector(arguments[3], data, states);
+                String blockSelector = getBlockSelector(arguments[3], data, states);
                 newArguments.add(blockSelector);
                 if(!oldBlockHandling.isEmpty())
                     newArguments.add(oldBlockHandling);
@@ -7200,6 +7198,37 @@ public class MinecraftIDConverter {
     public static void getEntitiesTags(String legacyID ,CompoundTag entity, JSONObject properties) {
         TagConv.getByteTagProperty(entity,"NoGravity","NoGravity",properties);
         TagConv.floatTagListToJson("Rotation", entity, properties);
+
+        TagConv.getByteTagProperty(entity, "CustomNameVisible", "CustomNameVisible", properties);
+        if(entity.containsKey("CustomName")) {
+            Tag<?> customName = entity.get("CustomName");
+            String customNameText = "";
+            if(customName instanceof StringTag customNameString) {
+                customNameText = customNameString.getValue();
+            }else if(customName instanceof CompoundTag customNameCompound) {
+                JSONObject customNameProps = new JSONObject();
+                TagConv.getCompoundTagProperties(customNameCompound, customNameProps);
+                customNameText = customNameProps.toJSONString();
+            }else if(customName instanceof ListTag<?> customNameList && customNameList.getTypeClass() == CompoundTag.class) {
+                ListTag<CompoundTag> customNameCompoundList = customNameList.asCompoundTagList();
+                JSONObject customNameProps = new JSONObject();
+                customNameProps.put("text", "");
+                JSONArray extraArray = new JSONArray();
+                for(CompoundTag compoundTag : customNameCompoundList) {
+                    JSONObject extraItem = new JSONObject();
+                    TagConv.getCompoundTagProperties(compoundTag, extraItem);
+                    if(!extraItem.isEmpty())
+                        extraArray.add(extraItem);
+                }
+                if(!extraArray.isEmpty())
+                    customNameProps.put("extra", extraArray);
+
+                customNameText = customNameProps.toJSONString();
+            }
+
+            if(customNameText != null && !customNameText.isEmpty())
+                properties.put("CustomName", customNameText);
+        }
 
         if (legacyID.contains("minecart")) {
             TagConv.getByteTagProperty(entity, "CustomDisplayTile", "display_tile", properties);

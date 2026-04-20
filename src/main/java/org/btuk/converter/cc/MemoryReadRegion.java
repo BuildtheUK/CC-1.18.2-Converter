@@ -37,7 +37,8 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
     private final int keyCount;
     private ByteBuffer fileBuffer;
 
-    private Set<RegionKey> thrownRegionKeys = new HashSet<>();
+    private final Set<RegionKey> thrownRegionKeys = new HashSet<>();
+    private final Set<RegionKey> thrownRegionKeys2 = new HashSet<>();
 
     private MemoryReadRegion(SeekableByteChannel file,
                              IntPackedSectorMap<K> sectorMap,
@@ -115,7 +116,11 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
                 }
                 return Optional.empty();
             } catch (IllegalArgumentException e) {
-                log.error("Illegal argument while reading key {} at : {}. This may be caused by a corrupt section.", key, e.getMessage());
+                //Only print the IllegalArgumentException message, if the region key didn't already throw a IllegalArgumentException
+                if(!thrownRegionKeys2.contains(key.getRegionKey())) {
+                    log.error("Illegal argument while reading key {} at : {}. This may be caused by a corrupt section.", key, e.getMessage());
+                    thrownRegionKeys2.add(key.getRegionKey());
+                }
                 return Optional.empty();
             }
         });
