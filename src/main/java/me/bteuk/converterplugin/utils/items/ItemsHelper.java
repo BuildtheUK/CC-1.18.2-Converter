@@ -349,8 +349,9 @@ public class ItemsHelper {
                     JSONObject enchantment = (JSONObject) enchantments.get(c);
                     Integer lvl = Utils.readInteger(enchantment, "lvl");
                     if(lvl != null) {
-                        Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) enchantment.get("id")));
-                        itemMeta.addEnchant(_enchantment, lvl, true);
+                        Enchantment _enchantment = Utils.getEnchantment((String) enchantment.get("id"));
+                        if(_enchantment != null)
+                            itemMeta.addEnchant(_enchantment, lvl, true);
                     }
                 }
             }
@@ -361,8 +362,9 @@ public class ItemsHelper {
                     JSONObject storedEnchantment = (JSONObject) storedEnchantments.get(c);
                     Integer lvl = Utils.readInteger(storedEnchantment,"lvl");
                     if(lvl != null) {
-                        Enchantment _enchantment = Enchantment.getByKey(new NamespacedKey("minecraft", (String) storedEnchantment.get("id")));
-                        storageMeta.addStoredEnchant(_enchantment, lvl, true);
+                        Enchantment _enchantment = Utils.getEnchantment((String) storedEnchantment.get("id"));
+                        if(_enchantment != null)
+                            storageMeta.addStoredEnchant(_enchantment, lvl, true);
                     }
                 }
 

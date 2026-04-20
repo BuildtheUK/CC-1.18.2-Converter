@@ -8,8 +8,10 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.banner.PatternType;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.EulerAngle;
 import org.jetbrains.annotations.Nullable;
@@ -545,6 +547,29 @@ public class Utils {
             }
 
             return mat;
+        });
+    }
+
+    private static final Map<String, Enchantment> ID_TO_ENCHANTMENT = new ConcurrentHashMap<>();
+
+    /**
+     * Get the enchantment from the string ID
+     * @param id The ID of the enchantment, ex minecraft:aqua_affinity or aqua_affinity
+     * @return The Enchantment, else null
+     */
+    @Nullable
+    public static Enchantment getEnchantment(String id) {
+        return ID_TO_ENCHANTMENT.computeIfAbsent(id, (_id) -> {
+            if(_id == null || _id.isEmpty()) return null;
+
+            _id = _id.contains(":") ? _id.split(":", 2)[1] : _id;
+
+            Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(_id));
+
+            if(enchantment == null && _id.equals("sweeping"))
+                enchantment = Enchantment.getByKey(NamespacedKey.minecraft("sweeping_edge"));
+
+            return enchantment;
         });
     }
 
