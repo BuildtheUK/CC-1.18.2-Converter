@@ -1,6 +1,7 @@
 package me.bteuk.converterplugin.utils.items;
 
 import com.destroystokyo.paper.Namespaced;
+import me.bteuk.converterplugin.Plugin;
 import me.bteuk.converterplugin.utils.Utils;
 import me.bteuk.converterplugin.utils.inventory.InventoryHelper;
 import net.kyori.adventure.text.Component;
@@ -33,6 +34,12 @@ import java.util.*;
  */
 public class ItemsHelper {
 
+    private static Plugin instance;
+
+    public static void setHelper(Plugin instance) {
+        ItemsHelper.instance = instance;
+    }
+
     /**
      * Get the ItemsStack based on the ID of the item, and It's set the properties of the ItemStack based on the JSON object properties of the item
      * @param id The ID of the item, ex, "minecraft:knowledge_book"
@@ -48,6 +55,8 @@ public class ItemsHelper {
         ItemStack itemStack = new ItemStack(itemMaterial);
         ItemMeta itemMeta = itemStack.getItemMeta();
         boolean skipDisplayProps = false;
+
+        if(itemMeta == null) return null;
 
         //Player Head
         if(props.containsKey("SkullOwner")){
@@ -522,7 +531,7 @@ public class ItemsHelper {
                         inventory.setItem(_slot, itemStack);
                     }
                 } catch (Exception ex) {
-                    throw new Exception(String.format("Exception while setting item: %1$s | Error: %2$s", _id, ex.getMessage()));
+                    instance.getLogger().warning(String.format("Exception while setting item: %1$s | Error: %2$s", _id, ex.getMessage()));
                 }
             }
         }

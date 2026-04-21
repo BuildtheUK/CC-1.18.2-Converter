@@ -1,5 +1,6 @@
 package me.bteuk.converterplugin.utils.entities;
 
+import me.bteuk.converterplugin.Plugin;
 import me.bteuk.converterplugin.utils.Utils;
 import me.bteuk.converterplugin.utils.items.ItemsHelper;
 import org.bukkit.entity.ArmorStand;
@@ -14,6 +15,12 @@ import org.json.simple.JSONObject;
  * @author DavixDevelop
  */
 public class ArmorStandHelper {
+
+    private static Plugin instance;
+
+    public static void setHelper(Plugin instance) {
+        ArmorStandHelper.instance = instance;
+    }
 
     /**
      * Prepare the provided ArmorStand based on the JSON properties
@@ -88,7 +95,9 @@ public class ArmorStandHelper {
             String armorItemID = ((String) armorItemObject.get("id"));
             JSONObject armorItemProps = (JSONObject) armorItemObject.getOrDefault("Properties", new JSONObject());
 
-            ItemStack armorItem = ItemsHelper.getItem(armorItemID, armorItemProps);
+            try {
+
+                ItemStack armorItem = ItemsHelper.getItem(armorItemID, armorItemProps);
 
             /*if (armorItemObject.containsKey("DisplayProps")) {
                 JSONObject displayProps = (JSONObject) armorItemObject.get("DisplayProps");
@@ -99,13 +108,16 @@ public class ArmorStandHelper {
                 }
             }*/
 
-            if(armorItem != null) {
-                switch (c) {
-                    case 0 -> armorEquipment.setBoots(armorItem);
-                    case 1 -> armorEquipment.setLeggings(armorItem);
-                    case 2 -> armorEquipment.setChestplate(armorItem);
-                    case 3 -> armorEquipment.setHelmet(armorItem);
+                if (armorItem != null) {
+                    switch (c) {
+                        case 0 -> armorEquipment.setBoots(armorItem);
+                        case 1 -> armorEquipment.setLeggings(armorItem);
+                        case 2 -> armorEquipment.setChestplate(armorItem);
+                        case 3 -> armorEquipment.setHelmet(armorItem);
+                    }
                 }
+            }catch (Exception ex) {
+                instance.getLogger().warning("Error while setting armor items for Armor Stand at " + armorStand.getLocation() + ": " + ex.getMessage());
             }
         }
 
@@ -115,13 +127,17 @@ public class ArmorStandHelper {
             if(handItemID.isEmpty())
                 continue;
 
-            ItemStack handItem = ItemsHelper.getItem(handItemID, new JSONObject());
+            try {
+                ItemStack handItem = ItemsHelper.getItem(handItemID, new JSONObject());
 
-            if(handItem != null) {
-                if (c == 0)
-                    armorEquipment.setItemInMainHand(handItem);
-                else
-                    armorEquipment.setItemInOffHand(handItem);
+                if (handItem != null) {
+                    if (c == 0)
+                        armorEquipment.setItemInMainHand(handItem);
+                    else
+                        armorEquipment.setItemInOffHand(handItem);
+                }
+            }catch (Exception ex) {
+                instance.getLogger().warning("Error while setting hand items for Armor Stand at " + armorStand.getLocation() + ": " + ex.getMessage());
             }
 
         }

@@ -41,6 +41,10 @@ public class Converter {
         this.instance = instance;
         this.world = world;
 
+        //Set the helpers to use the logger in the Plugin
+        ItemsHelper.setHelper(instance);
+        ArmorStandHelper.setHelper(instance);
+
         isRunning = false;
     }
 
@@ -914,9 +918,13 @@ public class Converter {
                             } else {
                                 uuid = UUID.fromString(id);
                             }
-                            PlayerProfile profile = Bukkit.createProfile(uuid);
-                            profile.getProperties().add(new ProfileProperty("textures", (String) properties.get("texture")));
-                            skull.setPlayerProfile(profile);
+                            try {
+                                PlayerProfile profile = Bukkit.createProfile(uuid);
+                                profile.getProperties().add(new ProfileProperty("textures", (String) properties.get("texture")));
+                                skull.setPlayerProfile(profile);
+                            }catch (Exception ex) {
+                                instance.getLogger().warning("Error while setting Skull at " + l + ": " + ex.getMessage());
+                            }
                         }else {
                             Player player = Bukkit.getOfflinePlayer((String) properties.get("profileName")).getPlayer();
                             if(player != null) {
