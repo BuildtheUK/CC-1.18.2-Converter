@@ -2,6 +2,7 @@ name: Converter
 version: '${project.version}'
 main: me.bteuk.converterplugin.Plugin
 api-version: 1.18
+softdepend: [Multiverse-Core]
 
 commands:
   worldanalyser:
