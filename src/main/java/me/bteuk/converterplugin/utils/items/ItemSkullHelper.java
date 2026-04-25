@@ -76,7 +76,7 @@ public class ItemSkullHelper {
             if(!playerTextureSkin.isEmpty()){
                 String skinUrl = (String) playerTextureSkin.getOrDefault("url", "");
 
-                if(!skinUrl.isEmpty()) {
+                if(!skinUrl.isEmpty() && !skinUrl.contains("education.minecraft.net")) {
                     PlayerProfile customPlayerProfile = Bukkit.createProfile(id.isEmpty() ? UUID.randomUUID() : UUID.fromString(id));
                     //customPlayerProfile.setProperty(new ProfileProperty("textures", base64));
                     PlayerTextures playerTextures = customPlayerProfile.getTextures();
