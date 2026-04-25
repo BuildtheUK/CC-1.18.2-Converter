@@ -60,6 +60,9 @@ public class ItemMapsHelper {
      * @throws IOException
      */
     public void writeMapsID() throws IOException {
+        if (mapsID.isEmpty())
+            return;
+
         FileWriter _mapsID = new FileWriter(mapsIdPath.toFile());
         if (mapsID == null)
             mapsID = new JSONObject();
