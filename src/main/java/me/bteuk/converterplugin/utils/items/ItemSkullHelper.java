@@ -1,18 +1,13 @@
 package me.bteuk.converterplugin.utils.items;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.profile.PlayerTextures;
-import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.net.URL;
 import java.util.*;
 
 /**
@@ -53,54 +48,19 @@ public class ItemSkullHelper {
      * Create a ItemStack skull from an encoded base64 string that contains the JSON properties,
      * ex. the url to the skin/texture
      * @param id The ID of the player
-     * @param base64 The base64 encoded value of the "texture"
+     * @param base64 The base64 encoded value of the "textures"
      * @return The player head item stack with the custom player skin
-     * @throws ParseException
-     * @throws IOException
      */
-    public static ItemStack fromBase64(String id, String base64) throws ParseException, IOException {
+    public static ItemStack fromBase64(String id, String base64) throws Exception {
         ItemStack skullItem = new ItemStack(Material.PLAYER_HEAD, 1, (short)3);
         String rawJson = new String(Base64.getDecoder().decode(base64));
-        //If the keys aren't in double quotes in the raw JSON, fix the string
-        if(!rawJson.startsWith("{\""))
-            rawJson = rawJson.replaceAll("([\\{,])\\s*([A-Za-z0-9_]+)\\s*:", "$1\"$2\":");
-
-        StringReader reader = new StringReader(rawJson);
-        JSONObject playerTexturesJsonObject = (JSONObject) textureParser.parse(reader);
+        if(!rawJson.contains("textures.minecraft.net")) throw new Exception("Expected host 'textures.minecraft.net', skipping");
 
         SkullMeta skullMeta = (SkullMeta) skullItem.getItemMeta();
+        PlayerProfile customPlayerProfile = Bukkit.createProfile(id.isEmpty() ? UUID.randomUUID() : UUID.fromString(id));
+        customPlayerProfile.setProperty(new ProfileProperty("textures", base64));
 
-        JSONObject playerTexturesJson = (JSONObject) playerTexturesJsonObject.getOrDefault("textures", new JSONObject());
-        if(!playerTexturesJson.isEmpty()){
-            JSONObject playerTextureSkin = (JSONObject) playerTexturesJson.getOrDefault("SKIN", new JSONObject());
-            if(!playerTextureSkin.isEmpty()){
-                String skinUrl = (String) playerTextureSkin.getOrDefault("url", "");
-
-                if(!skinUrl.isEmpty() && !skinUrl.contains("education.minecraft.net")) {
-                    PlayerProfile customPlayerProfile = Bukkit.createProfile(id.isEmpty() ? UUID.randomUUID() : UUID.fromString(id));
-                    //customPlayerProfile.setProperty(new ProfileProperty("textures", base64));
-                    PlayerTextures playerTextures = customPlayerProfile.getTextures();
-
-                    String skinModel = "";
-
-                    JSONObject playerTextureMeta = (JSONObject) playerTextureSkin.getOrDefault("metadata", new JSONObject());
-                    if (!playerTextureMeta.isEmpty())
-                        skinModel = (String) playerTextureMeta.getOrDefault("model", "");
-
-
-                    if (!skinModel.isEmpty())
-                        playerTextures.setSkin(new URL(skinUrl), (skinModel.equals("classic")) ? PlayerTextures.SkinModel.CLASSIC : PlayerTextures.SkinModel.SLIM);
-                    else
-                        playerTextures.setSkin(new URL(skinUrl));
-
-                    customPlayerProfile.setTextures(playerTextures);
-                    customPlayerProfile.complete();
-
-                    skullMeta.setPlayerProfile(customPlayerProfile);
-                }
-            }
-        }
-
+        skullMeta.setPlayerProfile(customPlayerProfile);
         skullItem.setItemMeta(skullMeta);
 
         return  skullItem;
