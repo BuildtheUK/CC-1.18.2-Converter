@@ -1,9 +1,15 @@
 package org.btuk.converter;
 
+import org.btuk.converter.utils.MinecraftIDConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
+import java.util.stream.Stream;
 
 public class Main {
 
@@ -116,8 +122,21 @@ public class Main {
         long hour = (durationInMillis / (1000 * 60 * 60)) % 24;
 
         String time = String.format("%02d:%02d:%02d.%d", hour, minute, second, millis);
+        deleteIfEmpty(MinecraftIDConverter.instance.mapsPath);
+        deleteIfEmpty(MinecraftIDConverter.instance.mapsPath.getParent().resolve("post-processing"));
         log.info("Done!");
         log.info("Conversion completed in: " + time);
+
+    }
+
+    private static void deleteIfEmpty(Path path) {
+        try (Stream<Path> pathStream = Files.list(path)) {
+            if (pathStream.findAny().isEmpty()) {
+                Files.delete(path);
+            }
+        } catch (IOException ignored) {
+            // It's fine
+        }
 
     }
 
@@ -128,5 +147,9 @@ public class Main {
                 "\t<offset>\tThe value to offset the world range into vanilla supported range [-2032,2032). Must be in multiple of 16\n" +
                 "\t[threads]\tThe number of threads to use (Optional)";
         log.info(help);
+    }
+
+    private static boolean isDirectionaryEmpty() {
+        return true;
     }
 }
