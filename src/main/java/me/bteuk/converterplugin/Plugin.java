@@ -144,6 +144,11 @@ public class Plugin extends JavaPlugin {
             if (isFolderEmpty(folder) && converterQueue.isEmpty()) {
 
                 getLogger().info("The post-processing folder has been cleared, disabling converter!");
+                try {
+                    Files.delete(folder);
+                } catch (IOException ignored) {
+                    // Do nothing
+                }
 
                 cancelTrackedTasks();
                 return;
