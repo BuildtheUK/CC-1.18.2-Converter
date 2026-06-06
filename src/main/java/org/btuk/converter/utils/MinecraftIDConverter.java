@@ -314,7 +314,7 @@ public class MinecraftIDConverter {
 
         switch (id) {
 
-            case 23, 25, 26, 52, 54, 61, 62, 63, 68, 116, 117, 119, (byte) 130, (byte) 137, (byte) 138, (byte) 144,
+            case 23, 25, 26, 52, 54, 61, 62, 63, 68, 116, 117, 119, (byte) 130, (byte) 137, (byte) 138, (byte) 140, (byte) 144,
                     (byte) 146, (byte) 149, (byte) 150, (byte) 151, (byte) 154, (byte) 158, (byte) 176,
                     (byte) 177, (byte) 178, (byte) 209, (byte) 210, (byte) 211, (byte) 219, (byte) 220, (byte) 221,
                     (byte) 222, (byte) 223, (byte) 224, (byte) 225, (byte) 226, (byte) 227, (byte) 228, (byte) 229,
@@ -335,7 +335,8 @@ public class MinecraftIDConverter {
 
             //Note block (not a block entity in 1.18.2).
             //Skull, since that will be done in post-processing.
-            case 25, (byte) 144 -> {
+            // Flower Pot (not a block entity in 1.18.2).
+            case 25, (byte) 144, (byte) 140 -> {
                 return true;
             }
 
@@ -502,7 +503,7 @@ public class MinecraftIDConverter {
 
                         case "minecraft:red_flower" -> {
 
-                            switch (block_entity.getByte("Data")) {
+                            switch (block_entity.getInt("Data")) {
 
                                 case 0 -> jo.put("type", "potted_poppy");
                                 case 1 -> jo.put("type", "potted_blue_orchid");
@@ -519,7 +520,7 @@ public class MinecraftIDConverter {
 
                         case "minecraft:sapling" -> {
 
-                            switch (block_entity.getByte("Data")) {
+                            switch (block_entity.getInt("Data")) {
 
                                 case 0 -> jo.put("type", "potted_oak_sapling");
                                 case 1 -> jo.put("type", "potted_spruce_sapling");
