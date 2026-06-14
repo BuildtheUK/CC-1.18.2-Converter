@@ -1,0 +1,5 @@
+name: Converter
+version: '${project.version}'
+main: org.btuk.converter.plugin.Plugin
+api-version: 1.18
+softdepend: [Multiverse-Core]

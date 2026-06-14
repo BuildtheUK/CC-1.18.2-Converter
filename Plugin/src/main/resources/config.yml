@@ -1,0 +1,22 @@
+#The name of the world that you converted, the name of the world is equal to the directory name of your world in your server files.
+world: earth
+
+#Whether the server should automatically convert regions on a scheduled basis,
+#this will only happen when no players are online to decrease the strain on the server when players are online.
+#The conversion interval speed can be set to HIGH - NORMAL - LOW
+#HIGH means it will add a new region to the queue every minute.
+#NORMAL adds a region to the queue every 2.5 minutes
+#LOW adds a region to the queue every 5 minutes
+automated_conversion:
+  enabled: false
+  speed: "HIGH"
+  speed-seconds: 0 # This value is used when > 0 is set for it. Cannot be less than queue-worker-seconds.
+
+queue-worker-seconds: 4 # How often the queue worker should run to process regions in the queue? It will only get one region from the queue at a time.
+
+#World analyser functions.
+world_analyser: true
+
+# How often (in hours) the server should attempt an automatic restart.
+# Set to 0 (or lower) to disable. Restarts are delayed while players are online.
+auto-restart-hours: 0
