@@ -12,6 +12,8 @@ import cubicchunks.regionlib.impl.save.SaveSection3D;
 import cubicchunks.regionlib.lib.ExtRegion;
 import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
 import cubicchunks.regionlib.util.CheckedConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -39,6 +41,7 @@ import static org.btuk.converter.cc.Utils.interruptibleConsumer;
 
 public class CubicChunkReader extends BaseMinecraftReader<CubicChunksColumnData, SaveCubeColumns> {
 
+    private static final Logger log = LoggerFactory.getLogger(CubicChunkReader.class);
     private final CompletableFuture<ChunkList> chunkList = new CompletableFuture<>();
     private final Thread loadThread;
     private static final Map<SaveCubeColumns, List<IRegionProvider<EntryLocation2D>>> providers2d = new WeakHashMap<>();
@@ -198,7 +201,7 @@ public class CubicChunkReader extends BaseMinecraftReader<CubicChunksColumnData,
                 try {
                     column = save.load(pos2d, true).orElse(null);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.error("Error loading 2D column at position " + pos2d, e);
                     if (!errorHandler.test(e)) {
                         return;
                     }
@@ -214,7 +217,7 @@ public class CubicChunkReader extends BaseMinecraftReader<CubicChunksColumnData,
                         EntryLocation3D location = new EntryLocation3D(pos2d.getEntryX(), y, pos2d.getEntryZ());
                         cube = save.load(location, true).orElse(Utils.createAirCubeBuffer(location));
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.error("Error loading 3D cube at position " + new EntryLocation3D(pos2d.getEntryX(), y, pos2d.getEntryZ()), e);
                         if (!errorHandler.test(e)) {
                             throw new UncheckedInterruptedException();
                         }

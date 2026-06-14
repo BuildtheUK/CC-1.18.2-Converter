@@ -2,6 +2,8 @@ package org.btuk.converter.utils;
 
 import net.querz.nbt.tag.*;
 import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,6 +15,49 @@ import java.util.Set;
  * @author DavixDevelop
  */
 public class TagConv {
+
+    private static final Logger log = LoggerFactory.getLogger(TagConv.class);
+
+    private static Number getNumericValue(CompoundTag tag, String tagName) {
+        if (!tag.containsKey(tagName)) {
+            return null;
+        }
+        Tag<?> raw = tag.get(tagName);
+        if (raw instanceof ByteTag) {
+            return ((ByteTag) raw).asByte();
+        }
+        if (raw instanceof ShortTag) {
+            return ((ShortTag) raw).asShort();
+        }
+        if (raw instanceof IntTag) {
+            return ((IntTag) raw).asInt();
+        }
+        if (raw instanceof LongTag) {
+            return ((LongTag) raw).asLong();
+        }
+        if (raw instanceof FloatTag) {
+            return ((FloatTag) raw).asFloat();
+        }
+        if (raw instanceof DoubleTag) {
+            return ((DoubleTag) raw).asDouble();
+        }
+        return null;
+    }
+
+    public static int getIntOrDefault(CompoundTag tag, String tagName, int defaultValue) {
+        Number value = getNumericValue(tag, tagName);
+        if (value == null) {
+            if (tag.containsKey(tagName)) {
+                Tag<?> raw = tag.get(tagName);
+                String typeName = raw == null ? "null" : raw.getClass().getSimpleName();
+                log.warn("Using default value {} for key '{}' because tag type '{}' is not numeric", defaultValue, tagName, typeName);
+            } else {
+                log.warn("Using default value {} for missing key '{}'", defaultValue, tagName);
+            }
+            return defaultValue;
+        }
+        return value.intValue();
+    }
     /**
      * Convert a ListTag of FloatTag to a Float List and insert it into a JSONObject
      * @param listKey The key name of the ListTag
@@ -96,8 +141,10 @@ public class TagConv {
      * @param properties A JSON object to which to write the ByteTag value into
      */
     public static void getByteTagProperty(CompoundTag tag, String tagName, String propName, JSONObject properties){
-        if(tag.containsKey(tagName))
-            properties.put(propName, tag.getByte(tagName));
+        Number value = getNumericValue(tag, tagName);
+        if (value != null) {
+            properties.put(propName, value.byteValue());
+        }
     }
 
     /**
@@ -122,8 +169,10 @@ public class TagConv {
      * @param properties A JSON object to which to write the DoubleTag value into
      */
     public static void getDoubleTagProperty(CompoundTag tag, String tagName, String propName, JSONObject properties){
-        if(tag.containsKey(tagName))
-            properties.put(propName, tag.getDouble(tagName));
+        Number value = getNumericValue(tag, tagName);
+        if (value != null) {
+            properties.put(propName, value.doubleValue());
+        }
     }
 
     /**
@@ -148,8 +197,10 @@ public class TagConv {
      * @param properties A JSON object to which to write the IntTag value into
      */
     public static void getIntTagProperty(CompoundTag tag, String tagName, String propName, JSONObject properties){
-        if(tag.containsKey(tagName))
-            properties.put(propName, tag.getInt(tagName));
+        Number value = getNumericValue(tag, tagName);
+        if (value != null) {
+            properties.put(propName, value.intValue());
+        }
     }
 
     /**
@@ -161,8 +212,10 @@ public class TagConv {
      * @param properties A JSON object to which to write the LongTag value into
      */
     public static void getLongTagProperty(CompoundTag tag, String tagName, String propName, JSONObject properties){
-        if(tag.containsKey(tagName))
-            properties.put(propName, tag.getLong(tagName));
+        Number value = getNumericValue(tag, tagName);
+        if (value != null) {
+            properties.put(propName, value.longValue());
+        }
     }
 
     /**
@@ -174,8 +227,10 @@ public class TagConv {
      * @param properties A JSON object to which to write the ShortTag value into
      */
     public static void getShortTagProperty(CompoundTag tag, String tagName, String propName, JSONObject properties){
-        if(tag.containsKey(tagName))
-            properties.put(propName, tag.getShort(tagName));
+        Number value = getNumericValue(tag, tagName);
+        if (value != null) {
+            properties.put(propName, value.shortValue());
+        }
     }
 
     /**
@@ -187,8 +242,10 @@ public class TagConv {
      * @param properties A JSON object to which to write the FloatTag value into
      */
     public static void getFloatTagProperty(CompoundTag tag, String tagName, String propName, JSONObject properties){
-        if(tag.containsKey(tagName))
-            properties.put(propName, tag.getFloat(tagName));
+        Number value = getNumericValue(tag, tagName);
+        if (value != null) {
+            properties.put(propName, value.floatValue());
+        }
     }
 
     /**

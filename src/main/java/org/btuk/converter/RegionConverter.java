@@ -14,11 +14,14 @@ import cubicchunks.regionlib.impl.MinecraftChunkLocation;
 import cubicchunks.regionlib.impl.header.TimestampHeaderEntryProvider;
 import cubicchunks.regionlib.impl.save.MinecraftSaveSection;
 import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
+import net.querz.io.MaxDepthReachedException;
 import org.btuk.converter.cc.MemoryWriteRegion;
 import org.btuk.converter.cc.RWLockingCachedRegionProvider;
 import org.btuk.converter.cc.Utils;
 import org.btuk.converter.utils.LegacyID;
 import org.btuk.converter.utils.MinecraftIDConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import net.querz.nbt.tag.CompoundTag;
 import net.querz.nbt.tag.DoubleTag;
 import net.querz.nbt.tag.ListTag;
@@ -35,10 +38,13 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipException;
 
 import static cubicchunks.regionlib.impl.save.MinecraftSaveSection.MinecraftRegionType.MCA;
 
 public class RegionConverter extends Thread {
+
+    private static final Logger log = LoggerFactory.getLogger(RegionConverter.class);
 
     ThreadManager mng;
 
@@ -109,58 +115,46 @@ public class RegionConverter extends Thread {
     /**
      * Start the thread and run until there are no items left in the queue.
      */
+    @Override
     public void run() {
 
-        //Iterate until the queue is empty.
+        // Iterate until the queue is empty.
         try {
             while (true) {
                 file = queue.take();
 
                 if (file.equals("end")) {
                     mng.activeThreads.decrementAndGet();
-
-                    //Write entities file.
-                    //FileWriter ppFile = new FileWriter(mng.itr.output.resolve("entities") + "/" + uuid + ".json");
-                    //ppFile.write(jaEntities.toJSONString());
-                    //ppFile.flush();
-                    //ppFile.close();
                     break;
                 }
-
-
 
                 try {
                     convert();
                 } catch (IOException ex) {
-                    ex.printStackTrace();
-                    System.out.println("An IOException occurred converting the file: " + file);
+                    log.error("An IOException occurred converting the file: " + file, ex);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    System.out.println("An Exception occurred converting the file: " + file);
+                    log.error("An Exception occurred converting the file: " + file, e);
                 }
             }
         } catch (InterruptedException e) {
+            log.error("Thread interrupted while processing", e);
             Thread.currentThread().interrupt();
-        }/* catch (IOException e) {
-            e.printStackTrace();
-        }*/
+        }
     }
 
     /**
      * Converts a single region (512x512) to 1.18.2.
-     * The file is set globally before calling this method.
-     *
-     * @throws IOException
+     * The file is set globally before calling this method
      */
     private void convert() throws IOException {
 
-        //Create new json array to store blocks for post-processing in.
+        // Create new json array to store blocks for post-processing in.
         ja = new JSONArray();
-        //Create json array to store entities.
+        // Create json array to store entities.
         jaEntities = new JSONArray();
 
-        //Iterate through all possible chunk columns in the file and continue with any that contain data.
-        //A region2d is 512x512 which is 32*32 in terms of chunks, so 1024 individual chunks to iterate.
+        // Iterate through all possible chunk columns in the file and continue with any that contain data.
+        // A region2d is 512x512 which is 32*32 in terms of chunks, so 1024 individual chunks to iterate.
         for (int i = 0; i < 1024; i++) {
 
             convertColumn(i);
@@ -168,8 +162,11 @@ public class RegionConverter extends Thread {
         }
 
         try {
+            if (ja.isEmpty() && jaEntities.isEmpty()) {
+                return;
+            }
 
-            //Write the json array to a file.
+            // Write the json array to a file.
             FileWriter ppFile = new FileWriter(mng.itr.output.resolve("post-processing") + "/" + file.replace(".2dr", ".json"));
             JSONObject postProcObj = new JSONObject();
             postProcObj.put("block", ja);
@@ -181,7 +178,7 @@ public class RegionConverter extends Thread {
 
         } catch (
                 IOException e) {
-            e.printStackTrace();
+            log.error("Error writing post-processing file for region: {}", file, e);
         }
     }
 
@@ -191,7 +188,7 @@ public class RegionConverter extends Thread {
      * @param columnID
      * the id of the column to be converted, id is from 0 to 1023
      *
-     * @throws IOException
+     * @throws IOException if an error occurs while reading or writing the file.
      */
     private void convertColumn(int columnID) throws IOException {
         CompoundTag chunk = new CompoundTag();
@@ -220,7 +217,16 @@ public class RegionConverter extends Thread {
             biomePalette.clear();
             biomePaletteID.clear();
 
-            CompoundTag columnTag = (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(column.get().array())).getTag();
+            CompoundTag columnTag;
+            try {
+                columnTag = (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(column.get().array())).getTag();
+            } catch (ZipException ex) {
+                log.error("Error reading cube in column ({},{}), skipping cube. This may be caused by a corrupt cube. {}: {}", entryX, entryZ, ex.getClass().getName(), ex.getMessage());
+                return;
+            } catch (Exception ex) {
+                log.error("Error reading column ({},{}), skipping column. {}: {}", entryX, entryZ, ex.getClass().getName(), ex.getMessage());
+                return;
+            }
             CompoundTag columnLevel = columnTag.getCompoundTag("Level");
 
             biomes = new CompoundTag();
@@ -231,9 +237,7 @@ public class RegionConverter extends Thread {
 
             //Get all cubes that could be in the range of heights.
             for (int y = Main.MIN_Y_CUBE; y < Main.MAX_Y_CUBE; y++) {
-
                 convertCube(y);
-
             }
 
             //If the whole chunk is empty, don't save it.
@@ -393,19 +397,23 @@ public class RegionConverter extends Thread {
      * @param y
      * y level of the cube, a new y level for every 16 blocks
      *
-     * @throws IOException
+     * @throws IOException if an error occurs while reading or writing the file.
      */
     private void convertCube(int y) throws IOException {
 
         //Get the cube of data.
         e3d = new EntryLocation3D(e2d.getEntryX(), y, e2d.getEntryZ());
-        Optional<ByteBuffer> cube = mng.itr.saveCubeColumns.load(e3d, true);
+        Optional<ByteBuffer> cube = mng.itr.saveCubeColumns.load(e3d, false);
 
         //Check if it exists.
         if (cube.isPresent()) {
 
             //Retrieve the data from the cube.
-            CompoundTag cubeTag = (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.get().array())).getTag();
+            CompoundTag cubeTag = getCubeTag(cube.get());
+            if (cubeTag == null) {
+                sections.add(mng.createEmptySection(y));
+                return;
+            }
             CompoundTag cubeLevel = cubeTag.getCompoundTag("Level");
 
             if (cubeLevel == null) {
@@ -454,9 +462,6 @@ public class RegionConverter extends Thread {
             for (LegacyID id : uniqueBlocks) {
                 //Store the index of this block, so we can easily reference it
                 // from the palette without having the convert it again.
-                if(id.equals((byte) -60, (byte) 4)){
-                    String w = "2";
-                }
                 paletteID.put(id, counter);
                 counter++;
                 palette.add(MinecraftIDConverter.getBlock(id));
@@ -693,6 +698,21 @@ public class RegionConverter extends Thread {
             }
         }
         return 0;
+    }
+
+    private CompoundTag getCubeTag(ByteBuffer cube) throws IOException {
+        try {
+            return (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.array())).getTag();
+        }catch (MaxDepthReachedException ex) {
+            log.error("Cube ({},{},{}) in file {} has an greater depth then the default NBT max depth of 512 - possible corrupt cube. \nIncreasing it to 1024 to try and read the whole cube", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ(), e3d.getRegionKey().getName());
+            try {
+                return (CompoundTag) mng.readCompressedCC(new ByteArrayInputStream(cube.array()), 1024).getTag();
+            }catch (MaxDepthReachedException e) {
+                log.error("Skipping cube ({},{},{})", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ());
+            }
+        }
+
+        return null;
     }
 
     private void save(Path regionDir, ByteBuffer data) throws IOException {

@@ -5,6 +5,8 @@ import net.querz.nbt.io.NBTInputStream;
 import net.querz.nbt.io.NBTOutputStream;
 import net.querz.nbt.io.NamedTag;
 import net.querz.nbt.tag.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -25,6 +27,8 @@ import java.util.zip.GZIPOutputStream;
  */
 
 public class ThreadManager {
+
+    private static final Logger log = LoggerFactory.getLogger(ThreadManager.class);
 
     final BlockingQueue<String> queue;
     AtomicInteger activeThreads;
@@ -97,14 +101,19 @@ public class ThreadManager {
             try {
                 queue.put("end");
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error("Interrupted while adding end marker to queue", e);
+                Thread.currentThread().interrupt();
             }
         }
     }
 
     public NamedTag readCompressedCC(InputStream is) throws IOException {
+        return readCompressedCC(is, Tag.DEFAULT_MAX_DEPTH);
+    }
+
+    public NamedTag readCompressedCC(InputStream is, int maxDepth) throws IOException {
         try (NBTInputStream nbtInputStream = new NBTInputStream(new BufferedInputStream(new GZIPInputStream(is)))) {
-            return nbtInputStream.readTag(Tag.DEFAULT_MAX_DEPTH);
+            return nbtInputStream.readTag(maxDepth);
         }
     }
 

@@ -1,5 +1,8 @@
 package org.btuk.converter.cc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -8,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
 public abstract class BaseMinecraftReader<DATA, SAVE extends Closeable> implements ChunkDataReader<DATA> {
+    private static final Logger log = LoggerFactory.getLogger(BaseMinecraftReader.class);
     protected final Path srcDir;
     protected final Map<Dimension, SAVE> saves;
 
@@ -28,7 +32,7 @@ public abstract class BaseMinecraftReader<DATA, SAVE extends Closeable> implemen
             try {
                 save.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("Error closing save resource", e);
                 exception = true;
             }
         }

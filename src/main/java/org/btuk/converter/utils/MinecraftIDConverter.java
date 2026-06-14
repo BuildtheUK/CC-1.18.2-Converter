@@ -1,5 +1,8 @@
 package org.btuk.converter.utils;
 
+import com.google.common.hash.HashCode;
+import com.google.common.hash.Hashing;
+import com.google.common.io.ByteSource;
 import org.btuk.converter.Main;
 import net.querz.nbt.io.NBTUtil;
 import net.querz.nbt.tag.*;
@@ -311,7 +314,7 @@ public class MinecraftIDConverter {
 
         switch (id) {
 
-            case 23, 25, 26, 52, 54, 61, 62, 63, 68, 116, 117, 119, (byte) 130, (byte) 137, (byte) 138, (byte) 144,
+            case 23, 25, 26, 52, 54, 61, 62, 63, 68, 116, 117, 119, (byte) 130, (byte) 137, (byte) 138, (byte) 140, (byte) 144,
                     (byte) 146, (byte) 149, (byte) 150, (byte) 151, (byte) 154, (byte) 158, (byte) 176,
                     (byte) 177, (byte) 178, (byte) 209, (byte) 210, (byte) 211, (byte) 219, (byte) 220, (byte) 221,
                     (byte) 222, (byte) 223, (byte) 224, (byte) 225, (byte) 226, (byte) 227, (byte) 228, (byte) 229,
@@ -332,7 +335,8 @@ public class MinecraftIDConverter {
 
             //Note block (not a block entity in 1.18.2).
             //Skull, since that will be done in post-processing.
-            case 25, (byte) 144 -> {
+            // Flower Pot (not a block entity in 1.18.2).
+            case 25, (byte) 144, (byte) 140 -> {
                 return true;
             }
 
@@ -499,7 +503,7 @@ public class MinecraftIDConverter {
 
                         case "minecraft:red_flower" -> {
 
-                            switch (block_entity.getByte("Data")) {
+                            switch (block_entity.getInt("Data")) {
 
                                 case 0 -> jo.put("type", "potted_poppy");
                                 case 1 -> jo.put("type", "potted_blue_orchid");
@@ -516,7 +520,7 @@ public class MinecraftIDConverter {
 
                         case "minecraft:sapling" -> {
 
-                            switch (block_entity.getByte("Data")) {
+                            switch (block_entity.getInt("Data")) {
 
                                 case 0 -> jo.put("type", "potted_oak_sapling");
                                 case 1 -> jo.put("type", "potted_spruce_sapling");
@@ -568,14 +572,17 @@ public class MinecraftIDConverter {
 
                             jo.put("id", owner.getString("Id"));
 
-                            CompoundTag properties = owner.getCompoundTag("Properties");
-                            ListTag<CompoundTag> textures = (ListTag<CompoundTag>) properties.getListTag("textures");
+                            if(owner.containsKey("Properties")) {
+                                CompoundTag properties = owner.getCompoundTag("Properties");
+                                ListTag<CompoundTag> textures = (ListTag<CompoundTag>) properties.getListTag("textures");
 
-                            //Get first texture.
-                            CompoundTag texture = textures.get(0);
+                                //Get first texture.
+                                CompoundTag texture = textures.get(0);
 
-                            jo.put("texture", texture.getString("Value"));
-
+                                jo.put("texture", texture.getString("Value"));
+                            }else if(owner.containsKey("Name")) {
+                                jo.put("profileName", owner.getString("Name"));
+                            }
                         }
 
                     }
@@ -728,6 +735,8 @@ public class MinecraftIDConverter {
             block_entity.putString("id", "minecraft:shulker_box");
         } else if (id == 63 || id == 68) {
             block_entity.putString("id", "minecraft:sign");
+        } else if (id == (byte) 137 || id == (byte) 210 || id == (byte) 211) {
+            block_entity.putString("id", "minecraft:command_block");
         } else {
             block_entity.putString("id", getNameSpace(id, data));
         }
@@ -769,7 +778,7 @@ public class MinecraftIDConverter {
             case 61, 62 -> {
 
                 block_entity.put("Items", new ListTag<>(CompoundTag.class));
-                block_entity.put("RecipesUsed", new ListTag<>(CompoundTag.class));
+                block_entity.put("RecipesUsed", new CompoundTag());
                 block_entity.putShort("BurnTime", (short) 0);
                 block_entity.putShort("CookTime", (short) 0);
                 block_entity.putShort("CookTimeTotal", (short) 200);
@@ -2981,7 +2990,7 @@ public class MinecraftIDConverter {
                     }
 
                     case 13 -> {
-                        return "green_stain_glass";
+                        return "green_stained_glass";
                     }
 
                     case 14 -> {
@@ -6092,7 +6101,7 @@ public class MinecraftIDConverter {
             case 320 -> "cooked_porkchop";
             case 321 -> "painting";
             case 322 -> "golden_apple";
-            case 323 -> "sign";
+            case 323 -> "oak_sign";
             case 324 -> "wooden_door";
             case 325 -> "bucket";
             case 326 -> "water_bucket";
@@ -6329,7 +6338,7 @@ public class MinecraftIDConverter {
                         case 1 ->  "red_dye";
                         case 2 ->  "green_dye";
                         case 3 ->  "brown_dye";
-                        case 4 ->  "blu_dye";
+                        case 4 ->  "blue_dye";
                         case 5 ->  "purple_dye";
                         case 6 ->  "cyan_dye";
                         case 7 ->  "light_gray_dye";
@@ -6462,10 +6471,9 @@ public class MinecraftIDConverter {
                 }
                 case "filled_map" -> {
                     try {
-                        short org_id = instance.convertMapItem(damage);
-                        if(org_id != -1) {
-                            props.put("org_id", org_id);
-                            props.put("map_session", MinecraftIDConverter.instance.mapSession);
+                        String map_checksum = instance.convertMapItem(damage);
+                        if(map_checksum != null) {
+                            props.put("map_checksum", map_checksum);
                         }
                     }catch (Exception ex){
                         log.error(ex.toString());
@@ -6518,7 +6526,7 @@ public class MinecraftIDConverter {
                         case 8267, 16459 -> "leaping";
                         case 8269, 16461 -> "long_water_breathing";
                         case 8270, 16462 -> "long_invisibility";
-                        default -> "akward";
+                        default -> "awkward";
                     };
 
                     if(damage >= 16385) {
@@ -6657,7 +6665,7 @@ public class MinecraftIDConverter {
                         TagConv.getStringTagProperty(attributeModifiersTag, "Slot", "slot", attributeModifierItem);
                         TagConv.getLongTagProperty(attributeModifiersTag, "UUIDMost", "uuid_most", attributeModifierItem);
                         TagConv.getLongTagProperty(attributeModifiersTag, "UUIDLeast", "uuid_least", attributeModifierItem);
-                        int operationID = attributeModifiersTag.getInt("Operation");
+                        int operationID = TagConv.getIntOrDefault(attributeModifiersTag, "Operation", 0);
                         String operation = "ADD_NUMBER";
                         if(operationID == 1)
                             operation = "ADD_SCALAR";
@@ -6680,7 +6688,7 @@ public class MinecraftIDConverter {
                     JSONArray customPotionEffectsArray = new JSONArray();
                     for(CompoundTag customPotionEffect : customPotionEffects){
                         JSONObject customPotionEffectItem = new JSONObject();
-                        customPotionEffectItem.put("id", getEffectID(customPotionEffect.getInt("Id")));
+                        customPotionEffectItem.put("id", getEffectID(TagConv.getIntOrDefault(customPotionEffect, "Id", 0)));
                         TagConv.getByteTagProperty(customPotionEffect, "Amplifier", "amplifier", customPotionEffectItem);
                         TagConv.getIntTagProperty(customPotionEffect, "Duration", "duration", customPotionEffectItem);
                         TagConv.getByteTagProperty(customPotionEffect, "Ambient", "ambient", customPotionEffectItem);
@@ -6737,7 +6745,10 @@ public class MinecraftIDConverter {
             JSONObject displayProps = new JSONObject();
             CompoundTag displayTag = tag.getCompoundTag("display");
             TagConv.getStringTagProperty(displayTag, "Name", "display_name", displayProps);
+            TagConv.getStringTagProperty(displayTag, "LocName", "display_loc_name", displayProps);
             TagConv.getIntTagProperty(displayTag, "color", "display_color", displayProps);
+            TagConv.getIntTagProperty(displayTag, "MapColor", "map_color", displayProps);
+            TagConv.getStringTagListProperty(displayTag, "Lore", "lore", displayProps);
 
             if(!displayProps.isEmpty())
                 props.put("DisplayProps", displayProps);
@@ -6751,19 +6762,26 @@ public class MinecraftIDConverter {
      */
     public static void getSkullOwner(CompoundTag tag, JSONObject props){
         if(tag.containsKey("SkullOwner")) {
-            CompoundTag skullOwnerTag = tag.getCompoundTag("SkullOwner");
+            Tag<?> rawSkullOwnerTag = tag.get("SkullOwner");
             JSONObject skullOwnerItem = new JSONObject();
-            skullOwnerItem.put("id", skullOwnerTag.getString("Id"));
+            if(rawSkullOwnerTag instanceof CompoundTag skullOwnerTag) {
+                if(skullOwnerTag.containsKey("Id"))
+                    skullOwnerItem.put("id", skullOwnerTag.getString("Id"));
 
-            if (skullOwnerTag.containsKey("Properties")) {
-                CompoundTag skullOwnerProperties = skullOwnerTag.getCompoundTag("Properties");
-                if (skullOwnerProperties.containsKey("textures")) {
-                    ListTag skullOwnerTextures = skullOwnerProperties.getListTag("textures");
-                    if (skullOwnerTextures.size() > 0) {
-                        Tag skullOwnerTextureTag = skullOwnerTextures.get(0);
-                        TagConv.getStringTagProperty((CompoundTag) skullOwnerTextureTag, "Value", "texture", skullOwnerItem);
+                if (skullOwnerTag.containsKey("Properties")) {
+                    CompoundTag skullOwnerProperties = skullOwnerTag.getCompoundTag("Properties");
+                    if (skullOwnerProperties.containsKey("textures")) {
+                        ListTag skullOwnerTextures = skullOwnerProperties.getListTag("textures");
+                        if (skullOwnerTextures.size() > 0) {
+                            Tag skullOwnerTextureTag = skullOwnerTextures.get(0);
+                            TagConv.getStringTagProperty((CompoundTag) skullOwnerTextureTag, "Value", "texture", skullOwnerItem);
+                        }
                     }
-                }
+                } else if(skullOwnerTag.containsKey("Name"))
+                    skullOwnerItem.put("profileName", skullOwnerTag.getString("Name"));
+
+            }else if(rawSkullOwnerTag instanceof StringTag skullOwnerProfileName) {
+                skullOwnerItem.put("profileName", skullOwnerProfileName.getValue());
             }
 
             props.put("SkullOwner", skullOwnerItem);
@@ -6880,38 +6898,41 @@ public class MinecraftIDConverter {
 
     public Path dataPath;
     public Path mapsPath;
-    public String mapSession = UUID.randomUUID().toString();
-    public ConcurrentHashMap<Short, CompletableFuture<Short>> convertedMapItems = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Short, CompletableFuture<String>> convertedMapItems = new ConcurrentHashMap<>();
 
     /**
      * Return a CompletableFuture to convert a Filled Map Item based on the ID of the Item
      * @param id The short ID of the Filled Map
-     * @return A CompletableFuture to process the map item
+     * @return The checksum of the map file
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    public short convertMapItem(short id) throws ExecutionException, InterruptedException {
-        CompletableFuture<Short> future = convertedMapItems.computeIfAbsent(id,this::processMapItem);
+    public String convertMapItem(short id) throws ExecutionException, InterruptedException {
+        CompletableFuture<String> future = convertedMapItems.computeIfAbsent(id,this::processMapItem);
         return future.get();
     }
 
     /**
      * Process the filled map by directly reading the .dat file of it inside the data folder.
-     * and writing the tag values from the CompoundTag to the JSON map file in the output/maps/maps_[sessionID] folder
-     * Each time the converter is run, a random UUID sessionID is generated, as to avoid duplicate map ID's in the converted world
+     * and writing the tag values from the CompoundTag to the JSON map file in the output/maps folder
      * @param id The short ID of the map Item
-     * @return The short ID of the map Item
+     * @return A CompletableFuture to process the map item which returns the checksum of the map file
      */
-    private CompletableFuture<Short> processMapItem(short id){
+    private CompletableFuture<String> processMapItem(short id){
         return CompletableFuture.supplyAsync(() -> {
             Path mapDatPath = dataPath.resolve("map_" + id + ".dat");
+            String checksum = null;
             if(Files.exists(mapDatPath)){
                 try {
+                    ByteSource byteSource = com.google.common.io.Files.asByteSource(mapDatPath.toFile());
+                    HashCode hashCode = byteSource.hash(Hashing.murmur3_128());
+                    checksum = hashCode.toString();
+
                     CompoundTag mapTag = (CompoundTag) NBTUtil.read(mapDatPath.toFile()).getTag();
                     CompoundTag mapDataTag = mapTag.getCompoundTag("data");
 
                     if(mapDataTag.getInt("dimension") != 0)
-                        return (short)-1;
+                        return null;
 
                     JSONObject mapItem = new JSONObject();
                     TagConv.getByteTagProperty(mapDataTag, "scale", "scale", mapItem);
@@ -6932,50 +6953,17 @@ public class MinecraftIDConverter {
 
                     TagConv.getCompoundTagProperties(mapDataTag, mapItem);
 
-                    Path mapSessionFolder = mapsPath.resolve("maps_" + mapSession);
-                    Files.createDirectories(mapSessionFolder);
-
-                    FileWriter mapFile = new FileWriter(mapSessionFolder.resolve("map_" + id + ".json" ).toFile());
+                    FileWriter mapFile = new FileWriter(mapsPath.resolve(checksum + ".json" ).toFile());
                     mapFile.write(mapItem.toJSONString());
                     mapFile.flush();
                     mapFile.close();
                 } catch (Exception ex) {
                     log.error(String.format("Error while processing map_%1$d.dat | Error: %2$s", id, ex.getMessage()));
+                    return null;
                 }
             }
-            return id;
+            return checksum;
         });
-    }
-
-    /**
-     * Write the "maps" json file in the maps_[sessionID], which stores the ID's of the converted map items, and the
-     * ID of the session when the converted was run. This approach enables, for example if you want to convert multiple 1.12.2 worlds
-     * to a single converted world, as these multiple 1.12.2 worlds may use the same map item ID's, so the newer converted world,
-     * would overwrite the old map item JSON files that use the same ID.
-     */
-    public void writeMapsSessionConfig(){
-        try {
-            JSONObject sessionItem = new JSONObject();
-            JSONArray mapsItem = new JSONArray();
-            for(Short mapId : convertedMapItems.keySet()){
-                mapsItem.add("map_" + mapId);
-            }
-
-            if(!mapsItem.isEmpty()) {
-                sessionItem.put("maps", mapsItem);
-                sessionItem.put("maps_session", mapSession);
-
-                Path mapSessionFolder = mapsPath.resolve("maps_" + mapSession);
-                FileWriter mapFile = new FileWriter(mapSessionFolder.resolve("maps.json").toFile());
-                mapFile.write(sessionItem.toJSONString());
-                mapFile.flush();
-                mapFile.close();
-            }
-
-
-        }catch (Exception ex){
-            log.error(String.format("Error while writing maps session config"));
-        }
     }
 
     /**
@@ -7107,7 +7095,6 @@ public class MinecraftIDConverter {
                 newArguments.add(arguments[1]);
                 newArguments.add(arguments[2]);
 
-                String blockSelector = "";
                 HashMap<String, String> states = new HashMap<>();
                 byte data = 0;
                 String oldBlockHandling = "";
@@ -7131,7 +7118,7 @@ public class MinecraftIDConverter {
                     }
                 }
 
-                blockSelector = getBlockSelector(arguments[3], data, states);
+                String blockSelector = getBlockSelector(arguments[3], data, states);
                 newArguments.add(blockSelector);
                 if(!oldBlockHandling.isEmpty())
                     newArguments.add(oldBlockHandling);
@@ -7212,6 +7199,37 @@ public class MinecraftIDConverter {
     public static void getEntitiesTags(String legacyID ,CompoundTag entity, JSONObject properties) {
         TagConv.getByteTagProperty(entity,"NoGravity","NoGravity",properties);
         TagConv.floatTagListToJson("Rotation", entity, properties);
+
+        TagConv.getByteTagProperty(entity, "CustomNameVisible", "CustomNameVisible", properties);
+        if(entity.containsKey("CustomName")) {
+            Tag<?> customName = entity.get("CustomName");
+            String customNameText = "";
+            if(customName instanceof StringTag customNameString) {
+                customNameText = customNameString.getValue();
+            }else if(customName instanceof CompoundTag customNameCompound) {
+                JSONObject customNameProps = new JSONObject();
+                TagConv.getCompoundTagProperties(customNameCompound, customNameProps);
+                customNameText = customNameProps.toJSONString();
+            }else if(customName instanceof ListTag<?> customNameList && customNameList.getTypeClass() == CompoundTag.class) {
+                ListTag<CompoundTag> customNameCompoundList = customNameList.asCompoundTagList();
+                JSONObject customNameProps = new JSONObject();
+                customNameProps.put("text", "");
+                JSONArray extraArray = new JSONArray();
+                for(CompoundTag compoundTag : customNameCompoundList) {
+                    JSONObject extraItem = new JSONObject();
+                    TagConv.getCompoundTagProperties(compoundTag, extraItem);
+                    if(!extraItem.isEmpty())
+                        extraArray.add(extraItem);
+                }
+                if(!extraArray.isEmpty())
+                    customNameProps.put("extra", extraArray);
+
+                customNameText = customNameProps.toJSONString();
+            }
+
+            if(customNameText != null && !customNameText.isEmpty())
+                properties.put("CustomName", customNameText);
+        }
 
         if (legacyID.contains("minecart")) {
             TagConv.getByteTagProperty(entity, "CustomDisplayTile", "display_tile", properties);
