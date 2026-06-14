@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Date;
 import java.util.stream.Stream;
 
@@ -91,7 +90,7 @@ public class Main {
         }
 
         if(MAX_Y_CUBE - MIN_Y_CUBE > 254 || MAX_Y_CUBE - MIN_Y_CUBE == 0) {
-            log.error("The target world range must lower or equal to 2064");
+            log.error("The target world range must lower or equal to 4064");
             return;
         }
 
@@ -141,15 +140,12 @@ public class Main {
     }
 
     public static void printHelp(){
-        String help = "Usage: java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]\n" +
-                "\t<path to input> <path to output>\tThe path to the CC world and output folder\n" +
-                "\t<minY> <maxY>\tThe min and max world range to target (maxY-minY <= 2064) \n" +
-                "\t<offset>\tThe value to offset the world range into vanilla supported range [-2032,2032). Must be in multiple of 16\n" +
-                "\t[threads]\tThe number of threads to use (Optional)";
+        String help = """
+                Usage: java -jar CC-Converter.jar <path to input> <path to output> <minY> <maxY> <offset> [threads]
+                \t<path to input> <path to output>\tThe path to the CC world and output folder
+                \t<minY> <maxY>\tThe min and max world range to target (maxY-minY <= 2064)\s
+                \t<offset>\tThe value to offset the world range into vanilla supported range [-2032,2032). Must be in multiple of 16
+                \t[threads]\tThe number of threads to use (Optional)""";
         log.info(help);
-    }
-
-    private static boolean isDirectionaryEmpty() {
-        return true;
     }
 }

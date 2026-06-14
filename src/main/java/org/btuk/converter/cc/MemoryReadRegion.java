@@ -9,7 +9,6 @@ import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
-import cubicchunks.regionlib.lib.Region;
 import cubicchunks.regionlib.lib.header.IKeyIdToSectorMap;
 import cubicchunks.regionlib.lib.header.IntPackedSectorMap;
 import cubicchunks.regionlib.util.CheckedConsumer;
@@ -37,14 +36,14 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
     private final int keyCount;
     private ByteBuffer fileBuffer;
 
-    private final Set<RegionKey> thrownRegionKeys = new HashSet<>();
-    private final Set<RegionKey> thrownRegionKeys2 = new HashSet<>();
+    private final Set<RegionKey> thrownIoExceptionRegionKeys = new HashSet<>();
+    private final Set<RegionKey> thrownIllegalArgumentExceptionRegionKeys = new HashSet<>();
 
     private MemoryReadRegion(SeekableByteChannel file,
                              IntPackedSectorMap<K> sectorMap,
                              RegionKey regionKey,
                              IKeyProvider<K> keyProvider,
-                             int sectorSize) throws IOException {
+                             int sectorSize) {
         this.file = file;
         this.regionKey = regionKey;
         this.keyProvider = keyProvider;
@@ -53,16 +52,16 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
         this.sectorMap = sectorMap;
     }
 
-    @Override public synchronized void writeValue(K key, ByteBuffer value) throws IOException {
+    @Override public synchronized void writeValue(K key, ByteBuffer value) {
         throw new UnsupportedOperationException("Writing not supported in this implementation");
     }
 
     @Override
-    public void writeValues(Map<K, ByteBuffer> entries) throws IOException {
+    public void writeValues(Map<K, ByteBuffer> entries) {
         throw new UnsupportedOperationException("Writing not supported in this implementation");
     }
 
-    @Override public void writeSpecial(K key, Object marker) throws IOException {
+    @Override public void writeSpecial(K key, Object marker) {
         throw new UnsupportedOperationException("Writing not supported in this implementation");
     }
 
@@ -83,9 +82,7 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
         }
         // a hack because Optional can't throw checked exceptions
         try {
-            return sectorMap.trySpecialValue(key)
-                    .map(reader -> Optional.of(reader.apply(key)))
-                    .orElseGet(() -> doReadKey(key));
+            return sectorMap.trySpecialValue(key).map(reader -> reader.apply(key)).or(() -> doReadKey(key));
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }
@@ -110,16 +107,16 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
                 return Optional.of(ByteBuffer.allocate(dataLength).put(fileBuffer));
             } catch (IOException e) {
                 //Only print the IOException message if the region key didn't already throw an error
-                if(!thrownRegionKeys.contains(key.getRegionKey())) {
-                    log.error("{}: {}", e.getClass().getName(), e.getMessage());
-                    thrownRegionKeys.add(key.getRegionKey());
+                if(!thrownIoExceptionRegionKeys.contains(key.getRegionKey())) {
+                    log.error("{}: {} on key {}", e.getClass().getName(), e.getMessage(), key);
+                    thrownIoExceptionRegionKeys.add(key.getRegionKey());
                 }
                 return Optional.empty();
             } catch (IllegalArgumentException e) {
                 //Only print the IllegalArgumentException message, if the region key didn't already throw a IllegalArgumentException
-                if(!thrownRegionKeys2.contains(key.getRegionKey())) {
+                if(!thrownIllegalArgumentExceptionRegionKeys.contains(key.getRegionKey())) {
                     log.error("Illegal argument while reading key {} at : {}. This may be caused by a corrupt section.", key, e.getMessage());
-                    thrownRegionKeys2.add(key.getRegionKey());
+                    thrownIllegalArgumentExceptionRegionKeys.add(key.getRegionKey());
                 }
                 return Optional.empty();
             }
@@ -143,23 +140,10 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
         }
     }
 
-
-    private int getSectorNumber(int bytes) {
-        return ceilDiv(bytes, sectorSize);
-    }
-
     @Override public void close() throws IOException {
         if (file != null) {
             file.close();
         }
-    }
-
-    private static int ceilDiv(int x, int y) {
-        return -Math.floorDiv(-x, y);
-    }
-
-    public static <L extends IKey<L>> Region.Builder<L> builder() {
-        return new Region.Builder<>();
     }
 
     /**
@@ -173,7 +157,7 @@ public class MemoryReadRegion<K extends IKey<K>> implements IRegion<K> {
         private int sectorSize = 512;
         private RegionKey regionKey;
         private IKeyProvider<K> keyProvider;
-        private List<IntPackedSectorMap.SpecialSectorMapEntry<K>> specialEntries = new ArrayList<>();
+        private final List<IntPackedSectorMap.SpecialSectorMapEntry<K>> specialEntries = new ArrayList<>();
 
         public MemoryReadRegion.Builder<K> setDirectory(Path path) {
             this.directory = path;

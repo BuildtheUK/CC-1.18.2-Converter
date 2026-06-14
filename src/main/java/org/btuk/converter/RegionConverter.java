@@ -37,7 +37,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipException;
 
@@ -189,7 +188,7 @@ public class RegionConverter extends Thread {
      * @param columnID
      * the id of the column to be converted, id is from 0 to 1023
      *
-     * @throws IOException
+     * @throws IOException if an error occurs while reading or writing the file.
      */
     private void convertColumn(int columnID) throws IOException {
         CompoundTag chunk = new CompoundTag();
@@ -398,7 +397,7 @@ public class RegionConverter extends Thread {
      * @param y
      * y level of the cube, a new y level for every 16 blocks
      *
-     * @throws IOException
+     * @throws IOException if an error occurs while reading or writing the file.
      */
     private void convertCube(int y) throws IOException {
 
@@ -411,6 +410,10 @@ public class RegionConverter extends Thread {
 
             //Retrieve the data from the cube.
             CompoundTag cubeTag = getCubeTag(cube.get());
+            if (cubeTag == null) {
+                sections.add(mng.createEmptySection(y));
+                return;
+            }
             CompoundTag cubeLevel = cubeTag.getCompoundTag("Level");
 
             if (cubeLevel == null) {
@@ -707,8 +710,6 @@ public class RegionConverter extends Thread {
             }catch (MaxDepthReachedException e) {
                 log.error("Skipping cube ({},{},{})", e3d.getEntryX(), e3d.getEntryY(), e3d.getEntryZ());
             }
-        }catch (Exception ex) {
-            throw ex;
         }
 
         return null;
